@@ -10,7 +10,6 @@ public class MenuPrincipal {
         Scanner input = new Scanner(System.in);
 
         Usuario adm1 = new Usuario(1, "ADMIN", "123@", "Administrador");
-        Usuario caje1 = new Usuario(2, "Angel", "12345", "Cajero");
         
         boolean acceso = false;
 

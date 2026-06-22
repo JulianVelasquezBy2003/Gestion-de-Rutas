@@ -1,13 +1,13 @@
 package modelo;
 
 public class Usuario {
-    
+
     // Atributos de la clase usuario
     private int id;
     private String nombre;
     private String contraseña;
     private String rol;
-    
+
     // Constructores
     public Usuario(int id, String nombre, String contraseña, String rol) {
         this.id = id;
@@ -15,12 +15,12 @@ public class Usuario {
         this.contraseña = contraseña;
         this.rol = rol;
     }
-    
+
+    // Getters & Setters    
     public int getId() {
-        return id;    
+        return id;
     }
 
-    // Getters & Setters
     public void setId(int id) {
         this.id = id;
     }
@@ -48,7 +48,5 @@ public class Usuario {
     public void setRol(String rol) {
         this.rol = rol;
     }
-    
-    
-    
+
 }
