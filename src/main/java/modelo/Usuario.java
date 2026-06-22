@@ -3,20 +3,27 @@ package modelo;
 public class Usuario {
     
     // Atributos de la clase usuario
-    
+    private int id;
     private String nombre;
     private String contraseña;
     private String rol;
     
     // Constructores
-
-    public Usuario(String nombre, String contraseña, String rol) {
+    public Usuario(int id, String nombre, String contraseña, String rol) {
+        this.id = id;
         this.nombre = nombre;
         this.contraseña = contraseña;
         this.rol = rol;
     }
     
-    // GETTERS Y SETTERS
+    public int getId() {
+        return id;    
+    }
+
+    // Getters & Setters
+    public void setId(int id) {
+        this.id = id;
+    }
 
     public String getNombre() {
         return nombre;
