@@ -1,4 +1,4 @@
-package com.mycompany.gestionderutas;
+package gestionderutas;
 
 import java.util.Scanner;
 import modelo.Usuario;

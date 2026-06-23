@@ -1,16 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root>
 <Usuario>
-    <id>1</id>
+    <id>0001</id>
     <nombre>ADMIN</nombre>
     <contraseña>123@</contraseña>
     <rol>Administrador</rol>
 </Usuario>
 
 <Usuario>
-    <id>2</id>
+    <id>0002</id>
     <nombre>Angel</nombre>
     <contraseña>12345</contraseña>
+    <rol>Cajero</rol>
+</Usuario>
+
+<Usuario>
+    <id>0003</id>
+    <nombre>Julian</nombre>
+    <contraseña>120703</contraseña>
     <rol>Cajero</rol>
 </Usuario>
 </root>
