@@ -2,38 +2,30 @@ package com.mycompany.gestionderutas;
 
 import java.util.Scanner;
 import modelo.Usuario;
+import datos.GestorArchivo;
 
 public class MenuPrincipal {
 
     public static void main(String[] args) {
-
         Scanner input = new Scanner(System.in);
-
-        Usuario adm1 = new Usuario(1, "ADMIN", "123@", "Administrador");
-        
+        GestorArchivo gestor = new GestorArchivo();
         boolean acceso = false;
+        Usuario usuarioLogin;
 
         while (!acceso) {
             System.out.println("━━━━━━━━━━━━━━━━━━━━ Login ━━━━━━━━━━━━━━━━━━━━━━");
             System.out.print("Ingresar Nombre de Usuario: ");
             String usuario = input.next();
             System.out.print("Contraseña: ");
-            String contraseña= input.next();
+            String contraseña = input.next();
+            System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            usuarioLogin = gestor.autenticar(usuario, contraseña);
 
-            if (usuario.equals(adm1.getNombre()) && contraseña.equals(adm1.getContraseña())) {
+            if (usuarioLogin != null) {
                 acceso = true;
-                System.out.println("\nLogin exitoso");
+                System.out.println("✅ Login exitoso ");
             } else {
-                System.out.println("\nUsuario o contraseña incorrectos\n");
-            }
-
-            if (adm1.getRol().equals("Administrador")) {
-
-                System.out.println("━━━━━━━━━━━━━━ Menu Administrativo ━━━━━━━━━━━━━━━");
-
-            } else {
-
-                System.out.println("━━━━━━━━━━━━━━━━━━ Menu Caja ━━━━━━━━━━━━━━━━━━━");
+                System.out.println("❌ Usuario o contraseña incorrectos\n");
             }
         }
 

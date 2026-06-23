@@ -1,7 +1,7 @@
 package modelo;
 
 public class Usuario {
-
+    
     // Atributos de la clase usuario
     private int id;
     private String nombre;

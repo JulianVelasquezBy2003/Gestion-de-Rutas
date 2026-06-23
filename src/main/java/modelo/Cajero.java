@@ -7,11 +7,11 @@ public class Cajero extends Usuario {
     }
 
     // Metodos
-    public void buscarViajes() {
+    public void buscarViaje() {
 
     }
 
-    public void venderPasajes() {
+    public void venderPasaje() {
 
     }
 
