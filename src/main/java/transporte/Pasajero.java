@@ -18,7 +18,6 @@ public class Pasajero {
     public String getDni() {
         return dni;
     }
-
     public void setDni(String dni) {
         this.dni = dni;
     }
@@ -26,7 +25,6 @@ public class Pasajero {
     public String getNombre() {
         return nombre;
     }
-
     public void setNombre(String nombre) {
         this.nombre = nombre;
     }
@@ -34,15 +32,18 @@ public class Pasajero {
     public int getEdad() {
         return edad;
     }
-
     public void setEdad(int edad) {
         this.edad = edad;
     }
 
     // Metodos
     // indica si el pasasjero tiene descuento
-    public boolean tieneDescuento() {
-        return edad < 12 || edad >= 60;
+    public double calcularPrecioFinal(double precio, int edad) {
+        double precioFinal=0.0;
+        if (edad < 18 || edad >= 60) {
+            precioFinal = precio * 0.15;
+        }
+        return precioFinal;
     }
 
     //Metodo Funcion

@@ -2,7 +2,7 @@ package gestionderutas;
 
 import java.util.Scanner;
 import modelo.Usuario;
-import datos.GestorArchivo;
+import modelo.Reporte;
 
 public class MenuPrincipal {
 
@@ -11,7 +11,6 @@ public class MenuPrincipal {
         GestorArchivo gestor = new GestorArchivo();
         boolean acceso = false;
         Usuario usuarioLogin;
-
         while (!acceso) {
             System.out.println("━━━━━━━━━━━━━━━━━━━━ Login ━━━━━━━━━━━━━━━━━━━━━━");
             System.out.print("Ingresar Nombre de Usuario: ");
@@ -29,5 +28,14 @@ public class MenuPrincipal {
             }
         }
 
+    }
+
+    public static void menuAdministrador() {
+    }
+
+    public static void menuCajero() {
+    }
+
+    public static void verReporte(Reporte reporte) {
     }
 }

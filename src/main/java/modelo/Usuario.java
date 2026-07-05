@@ -1,7 +1,7 @@
 package modelo;
 
 public class Usuario {
-    
+
     // Atributos de la clase usuario
     private int id;
     private String nombre;
@@ -9,6 +9,12 @@ public class Usuario {
     private String rol;
 
     // Constructores
+    public Usuario() {
+    }
+
+    public Usuario(String nombre, String contraseña) {
+    }
+
     public Usuario(int id, String nombre, String contraseña, String rol) {
         this.id = id;
         this.nombre = nombre;
@@ -16,7 +22,8 @@ public class Usuario {
         this.rol = rol;
     }
 
-    // Getters & Setters    
+    // Getters & Setters
+    //Modificadores del Id
     public int getId() {
         return id;
     }
@@ -24,6 +31,7 @@ public class Usuario {
     public void setId(int id) {
         this.id = id;
     }
+    //Modificadores del Nombre
 
     public String getNombre() {
         return nombre;
@@ -32,6 +40,7 @@ public class Usuario {
     public void setNombre(String nombre) {
         this.nombre = nombre;
     }
+    //Modificadores de la Contrasena
 
     public String getContraseña() {
         return contraseña;
@@ -41,6 +50,7 @@ public class Usuario {
         this.contraseña = contraseña;
     }
 
+    //Modificadores del Rol
     public String getRol() {
         return rol;
     }
@@ -49,4 +59,12 @@ public class Usuario {
         this.rol = rol;
     }
 
+    //Metodo para cambiar Contrasena
+    public void cambiarContrasena(String nuevaContrasena) {
+    }
+
+    /* @Override
+    public String toString(){
+        return 
+    } */
 }

@@ -1,5 +1,8 @@
 package modelo;
 
+import transporte.Ruta;
+import transporte.Viaje;
+
 public class Administrador extends Usuario {
 
     // Atributos
@@ -8,16 +11,23 @@ public class Administrador extends Usuario {
     }
 
     // Metodos
-    public void registrarRuta() {
-
+    public void registrarRuta(Ruta ruta) {
     }
 
-    public void crearCajero() {
-
+    public void agregarHorario(Viaje[][] viajes) {
     }
 
-    public void verReporte() {
-
+    public Cajero crearCajero(String nombre, String contrasena) {
+        return new Cajero(nombre, contrasena);
     }
+
+    /*public Cajero crearCajero(String nombre, String contrasena) {
+    Cajero cajero = new Cajero(nombre, contrasena);
+
+    usuarios[cantidadUsuarios] = cajero;
+    cantidadUsuarios++;
+
+    return cajero;
+} */
 
 }

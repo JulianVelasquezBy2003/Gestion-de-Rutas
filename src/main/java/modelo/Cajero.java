@@ -1,21 +1,22 @@
 package modelo;
+import transporte.Viaje;
+import transporte.Pasajero;
 
 public class Cajero extends Usuario {
 
-    public Cajero(int id, String nombre, String contraseña, String rol) {
-        super(id, nombre, contraseña, rol);
+    public Cajero(String nombre, String contraseña) {
+        super(nombre, contraseña);
     }
 
     // Metodos
-    public void buscarViaje() {
-
+    //Debe mostrar frecuencias y precios diponibles
+    public Viaje[] mostrarHorario(String destino) {
+    }
+    
+    public void mostrarAsientos(Viaje viaje) {
     }
 
-    public void venderPasaje() {
-
-    }
-
-    public void verReporte() {
+    public Pasajero registarPasajero() {
 
     }
 
