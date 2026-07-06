@@ -1,0 +1,235 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+package control {
+class MenuPrincipal{
++ {static} main(args:String[]):void
++ {static} login():Usuario
++ menuAdministrador():void
++ menuCajero():void
++ verReporte(reporte:Reporte):void
+}
+
+class Sistema{
+- usuarios:Usuario[]
+- rutas:Ruta[]
+- viajes:Viaje[][]
+- ventas:Venta[]
+---
++ cargarDatos():void
++ guardarDatos():void
+---------------------------------------
++ buscarUsuario(nombre:String):Usuario
++ buscarRuta(id:int):Ruta
++ buscarViaje(id:int):Viaje
+---------------------------------------
++ registrarUsuario(usuario:Usuario):void
++ registrarRuta(ruta:Ruta):void
++ registrarVenta(venta:Venta):void
+---------------------------------------
++ getUsuarios():Usuario[]
++ setUsuarios(u:Usuario[]):void
++ getRutas():Ruta[]
++ setRutas(r:Ruta[]):void
++ getViajes():Viaje[][]
++ setViajes(v:Viaje[][]):void
++ getVentas():Venta[]
++ setVentas(v:Venta[]):void
+    }
+}
+
+package modelo {
+
+abstract class Usuario{
+-id:int
+-nombre:String
+-contrasena:String
+-rol:String
++ Usuario()
++ Usuario(id:int,nombre:String,contrasena:String,rol:String)
++ getId():int
++ setId(id:int):void
++ getNombre():String
++ setNombre(nombre:String):void
++ getContrasena():String
++ setContrasena(c:String):void
++ getRol():String
++ setRol(r:String):void
++ cambiarContrasena(nueva:String):void
++ toString():String
+}
+
+class Administrador{
++ registrarRuta(ruta:Ruta):void
++ agregarHorario(viajes:Viaje[][]):void
++ crearCajero(nombre:String,contrasena:String):Cajero
++ cambiarContrasena(usuario:Usuario):void
++ verReporteVentas():String
++ verReporteOcupacion():String
+}
+
+class Cajero{
++ mostrarHorarios(destino:String):Viaje[]
++ mostrarAsientos(viaje:Viaje):void
++ registrarPasajero():Pasajero
++ seleccionarAsiento(viaje:Viaje,fila:int,columna:int):boolean
++ venderPasaje(viaje:Viaje,p:Pasajero):Venta
+}
+
+class Ruta{
+-idRuta:int
+-origen:String
+-destino:String
+-duracionEstimada:double
+-precioBase:double
++ Ruta()
++ getIdRuta():int
++ setIdRuta(id:int):void
++ getOrigen():String
++ setOrigen(o:String):void
++ getDestino():String
++ setDestino(d:String):void
++ getDuracionEstimada():double
++ setDuracionEstimada(x:double):void
++ getPrecioBase():double
++ setPrecioBase(p:double):void
++ toString():String
+}
+
+class Bus{
+-idBus:int
+-placa:String
+-capacidad:int
+-asientos:char[][]
++ Bus()
++ getIdBus():int
++ setIdBus(id:int):void
++ getPlaca():String
++ setPlaca(p:String):void
++ getCapacidad():int
++ setCapacidad(c:int):void
++ getAsientos():char[][]
++ setAsientos(a:char[][]):void
++ mostrarAsientos():void
++ ocuparAsiento(fila:int,columna:int):void
+}
+
+class Viaje{
+-idViaje:int
+-fecha:String
+-hora:String
+-ruta:Ruta
+-bus:Bus
++ Viaje()
++ getIdViaje():int
++ setIdViaje(id:int):void
++ getFecha():String
++ setFecha(f:String):void
++ getHora():String
++ setHora(h:String):void
++ getRuta():Ruta
++ setRuta(r:Ruta):void
++ getBus():Bus
++ setBus(b:Bus):void
++ calcularOcupacion():double
++ toString():String
+}
+
+class Pasajero{
+-dni:String
+-nombre:String
+-edad:int
++ Pasajero()
++ getDni():String
++ setDni(d:String):void
++ getNombre():String
++ setNombre(n:String):void
++ getEdad():int
++ setEdad(e:int):void
++ calcularPrecioFinal(precio:double):double
++ toString():String
+}
+
+class Venta{
+-idVenta:int
+-fecha:String
+-precioFinal:double
+-pasajero:Pasajero
+-viaje:Viaje
++ Venta()
++ getIdVenta():int
++ setIdVenta(id:int):void
++ getFecha():String
++ setFecha(f:String):void
++ getPrecioFinal():double
++ setPrecioFinal(p:double):void
++ generarComprobante():String
++ toString():String
+}
+
+class Reporte{
++ verVentasDia(v:Venta[]):String
++ verOcupacion(v:Viaje[]):String
+}
+}
+
+package persistencia{
+class Persistencia{
++ cargarUsuarios():Usuario[]
++ guardarUsuarios(u:Usuario[]):void
++ cargarRutas():Ruta[]
++ guardarRutas(r:Ruta[]):void
++ cargarViajes():Viaje[][]
++ guardarViajes(v:Viaje[][]):void
++ cargarVentas():Venta[]
++ guardarVentas(v:Venta[]):void
+}
+}
+
+package util{
+class Validador{
++ validarDNI(dni:String):boolean
++ leerEntero():int
++ leerDouble():double
++ leerCadena():String
+}
+}
+
+Usuario <|-- Administrador
+Usuario <|-- Cajero
+MenuPrincipal --> Sistema
+Sistema --> Persistencia
+MenuPrincipal ..> Validador
+Administrador --> Ruta
+Administrador --> Reporte
+Administrador --> Cajero
+Cajero --> Viaje
+Cajero --> Venta
+Cajero --> Pasajero
+Ruta "1" o-- "*" Viaje
+Viaje *-- Bus
+Venta --> Viaje
+Venta --> Pasajero
+Reporte --> Venta
+Reporte --> Viaje
+Persistencia --> Usuario
+Persistencia --> Ruta
+Persistencia --> Viaje
+Persistencia --> Venta
+
+note right of Bus
+Mapa de asientos
+char[][]
+end note
+
+note right of Persistencia
+Archivos:
+usuarios.txt
+rutas.txt
+ventas.txt
+horarios.txt
+XML
+end note
+
+@enduml

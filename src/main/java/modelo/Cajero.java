@@ -4,12 +4,21 @@ import transporte.Pasajero;
 
 public class Cajero extends Usuario {
 
-    public Cajero(String nombre, String contraseña) {
-        super(nombre, contraseña);
+    public Cajero() {
     }
+
+    public Cajero(int id, String nombre, String contraseña) {
+        super(id, nombre, contraseña);
+    }
+
+    public Cajero(int id, String nombre, String contraseña, String rol) {
+        super(id, nombre, contraseña, rol);
+    }
+    
 
     // Metodos
     //Debe mostrar frecuencias y precios diponibles
+    /*
     public Viaje[] mostrarHorario(String destino) {
     }
     
@@ -18,6 +27,6 @@ public class Cajero extends Usuario {
 
     public Pasajero registarPasajero() {
 
-    }
+    } */
 
 }

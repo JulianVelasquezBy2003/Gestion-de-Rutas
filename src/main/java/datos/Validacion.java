@@ -5,4 +5,9 @@ public class Validacion {
         boolean valido = false;
         return valido;
     }
+    
+    /*
+    public int leerEntero (){
+    }
+*/
 }

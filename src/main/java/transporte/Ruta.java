@@ -13,7 +13,14 @@ public class Ruta {
 
     public Ruta() {
     }
- 
+
+    public Ruta(String origen, String destino, double duracionEstimada, double precioBase) {
+        this.origen = origen;
+        this.destino = destino;
+        this.duracionEstimada = duracionEstimada;
+        this.precioBase = precioBase;
+    }
+
     // Getters & Setters
     public int getIdRuta() {
         return idRuta;

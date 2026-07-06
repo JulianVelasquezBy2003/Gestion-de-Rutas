@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><rutas>
+        <ruta id="1">
+            <origen>Lima</origen>
+            <destino>Arequipa</destino>
+            <duracionEstimada>16.5</duracionEstimada>
+            <precioBase>120.0</precioBase>
+        </ruta>
+        <ruta id="2">
+            <origen>Lima</origen>
+            <destino>Cusco</destino>
+            <duracionEstimada>20.0</duracionEstimada>
+            <precioBase>150.0</precioBase>
+        </ruta>
+        <ruta id="3">
+            <origen>Arequipa</origen>
+            <destino>Puno</destino>
+            <duracionEstimada>6.0</duracionEstimada>
+            <precioBase>80.0</precioBase>
+        </ruta>
+    

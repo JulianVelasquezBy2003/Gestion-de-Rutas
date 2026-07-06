@@ -1,23 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<root>
-<Usuario>
-    <id>0001</id>
-    <nombre>ADMIN</nombre>
-    <contraseña>123@</contraseña>
-    <rol>Administrador</rol>
-</Usuario>
-
-<Usuario>
-    <id>0002</id>
-    <nombre>Angel</nombre>
-    <contraseña>12345</contraseña>
-    <rol>Cajero</rol>
-</Usuario>
-
-<Usuario>
-    <id>0003</id>
-    <nombre>Julian</nombre>
-    <contraseña>120703</contraseña>
-    <rol>Cajero</rol>
-</Usuario>
-</root>
+<usuarios>
+    <usuario id="1" rol="admin">
+        <nombre>Julian</nombre>
+        <contrasena>admin123</contrasena>
+    </usuario>
+    <usuario id="2" rol="cajero">
+        <nombre>Angela</nombre>
+        <contrasena>cajero456</contrasena>
+    </usuario>
+    <usuario id="3" rol="cajero">
+        <nombre>Juan</nombre>
+        <contrasena>ventas789</contrasena>
+    </usuario>
+</usuarios>

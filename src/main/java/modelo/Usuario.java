@@ -5,29 +5,31 @@ public class Usuario {
     // Atributos de la clase usuario
     private int id;
     private String nombre;
-    private String contraseña;
+    private String contrasena;
     private String rol;
 
     // Constructores
     public Usuario() {
     }
 
-    public Usuario(String nombre, String contraseña) {
-    }
-
-    public Usuario(int id, String nombre, String contraseña, String rol) {
+    public Usuario(int id, String nombre, String contrasena) {
         this.id = id;
         this.nombre = nombre;
-        this.contraseña = contraseña;
+        this.contrasena = contrasena;
+    }
+
+    public Usuario(int id, String nombre, String contrasena, String rol) {
+        this.id = id;
+        this.nombre = nombre;
+        this.contrasena = contrasena;
         this.rol = rol;
     }
 
-    // Getters & Setters
+    //Getters & Setters
     //Modificadores del Id
     public int getId() {
         return id;
     }
-
     public void setId(int id) {
         this.id = id;
     }
@@ -36,35 +38,33 @@ public class Usuario {
     public String getNombre() {
         return nombre;
     }
-
     public void setNombre(String nombre) {
         this.nombre = nombre;
     }
     //Modificadores de la Contrasena
 
-    public String getContraseña() {
-        return contraseña;
+    public String getContrasena() {
+        return contrasena;
     }
-
-    public void setContraseña(String contraseña) {
-        this.contraseña = contraseña;
+    public void setContrasena(String contraseña) {
+        this.contrasena = contraseña;
     }
 
     //Modificadores del Rol
     public String getRol() {
         return rol;
     }
-
     public void setRol(String rol) {
         this.rol = rol;
     }
 
     //Metodo para cambiar Contrasena
     public void cambiarContrasena(String nuevaContrasena) {
+        this.contrasena = nuevaContrasena;
     }
 
-    /* @Override
+    @Override
     public String toString(){
-        return 
-    } */
+        return nombre + "(" + rol +")";
+    } 
 }
