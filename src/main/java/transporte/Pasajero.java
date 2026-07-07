@@ -2,7 +2,8 @@ package transporte;
 
 public class Pasajero {
 
-    //Atributos de clase
+    //Atributos
+    
     private String dni;
     private String nombre;
     private int edad;
@@ -37,11 +38,12 @@ public class Pasajero {
     }
 
     // Metodos
-    // indica si el pasasjero tiene descuento
+    
     public double calcularPrecioFinal(double precio, int edad) {
-        double precioFinal=0.0;
+        double precioFinal = precio;
         if (edad < 18 || edad >= 60) {
-            precioFinal = precio * 0.15;
+            double descuento = 0.15;
+            precioFinal = precio - (precio * descuento);
         }
         return precioFinal;
     }

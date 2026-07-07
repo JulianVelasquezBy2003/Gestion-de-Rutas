@@ -1,54 +1,17 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <root>
     <viajes>
-        <!-- FILA 0: Destino "Arequipa" / COLUMNA 0: Hora "08:00" -->
-        <viaje id="1" fila="0" columna="0">
+        <viaje columna="0" fila="0" id="1">
             <fecha>2026-07-15</fecha>
             <hora>08:00</hora>
             <idRuta>1</idRuta>
             <bus>
-                <id>101</id>
+                <id>1</id>
                 <placa>ABC-123</placa>
                 <capacidad>40</capacidad>
                 <asientos>
                     <fila index="0">OOOOOOOOOO</fila>
                     <fila index="1">OOOOOOOOOO</fila>
-                    <fila index="2">OOOOOOOOOO</fila>  
-                    <fila index="3">OOOOOOOOOO</fila>
-                </asientos>
-            </bus>
-        </viaje>
-
-        <!-- FILA 0: Destino "Arequipa" / COLUMNA 1: Hora "14:00" -->
-        <viaje id="2" fila="0" columna="1">
-            <fecha>2026-07-15</fecha>
-            <hora>14:00</hora>
-            <idRuta>1</idRuta>
-            <bus>
-                <id>102</id>
-                <placa>DEF-456</placa>
-                <capacidad>40</capacidad>
-                <asientos>
-                    <fila index="0">OOOOOOOOOO</fila>
-                    <fila index="1">OOOOOOOOOO</fila>
-                    <fila index="2">OOOOOOOOOO</fila>
-                    <fila index="3">OOOOOOOOOO</fila>
-                </asientos>
-            </bus>
-        </viaje>
-
-        <!-- FILA 1: Destino "Cusco" / COLUMNA 0: Hora "09:00" -->
-        <viaje id="3" fila="1" columna="0">
-            <fecha>2026-07-16</fecha>
-            <hora>09:00</hora>
-            <idRuta>2</idRuta>
-            <bus>
-                <id>103</id>
-                <placa>GHI-789</placa>
-                <capacidad>40</capacidad>
-                <asientos>
-                    <fila index="0">OOOOOOOOOO</fila>
-                    <fila index="1">OOOOOOOOOO</fila> 
                     <fila index="2">OOOOOOOOOO</fila>
                     <fila index="3">OOOOOOOOOO</fila>
                 </asientos>
@@ -56,4 +19,3 @@
         </viaje>
     </viajes>
 </root>
-
