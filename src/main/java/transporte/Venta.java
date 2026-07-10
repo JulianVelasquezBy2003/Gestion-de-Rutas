@@ -1,12 +1,9 @@
 package transporte;
 
-/*
- * @author Julian
- */
+// @author Julian
 public class Venta {
 
     // Contador de memoria para ID
-    
     private static int siguienteId = 1;
 
     //Atributos
@@ -22,9 +19,7 @@ public class Venta {
     public Venta() {
     }
 
-    /**
-     * Genera el proximo identificador disponible para una nueva venta.
-     */
+    // Genera el proximo identificador disponible para una nueva venta.
     public static int generarSiguienteId() {
         return siguienteId++;
     }
@@ -66,32 +61,26 @@ public class Venta {
     }
 
     // Metodos
-    
     public String generarComprobante() {
         StringBuilder sb = new StringBuilder();
-        sb.append("==================================\n");
-        sb.append("      COMPROBANTE DE VENTA\n");
-        sb.append("==================================\n");
+        sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+        sb.append("  COMPROBANTE DE VENTA\n");
+        sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
         sb.append("N° Venta : ").append(idVenta).append("\n");
         sb.append("Fecha    : ").append(fecha != null ? fecha : "N/D").append("\n");
-
         if (pasajero != null) {
-            sb.append("Pasajero : ").append(pasajero.getNombre())
-              .append(" (DNI: ").append(pasajero.getDni()).append(")\n");
+            sb.append("Pasajero : ").append(pasajero.getNombre()) .append(" (DNI: ").append(pasajero.getDni()).append(")\n");
         } else {
             sb.append("Pasajero : N/D\n");
         }
-
         if (viaje != null && viaje.getRuta() != null) {
-            sb.append("Ruta     : ").append(viaje.getRuta().getOrigen())
-              .append(" -> ").append(viaje.getRuta().getDestino()).append("\n");
-            sb.append("Hora     : ").append(viaje.getHora() != null ? viaje.getHora() : "N/D").append("\n");
+            sb.append("Ruta   : ").append(viaje.getRuta().getOrigen()).append(" -> ").append(viaje.getRuta().getDestino()).append("\n");
+            sb.append("Hora   : ").append(viaje.getHora() != null ? viaje.getHora() : "N/D").append("\n");
         } else {
-            sb.append("Ruta     : N/D\n");
+            sb.append("Ruta   : N/D\n");
         }
-
-        sb.append("Total    : S/ ").append(String.format("%.2f", precioFinal)).append("\n");
-        sb.append("==================================");
+        sb.append("Total  : S/ ").append(String.format("%.2f", precioFinal)).append("\n");
+        sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         return sb.toString();
     }
 

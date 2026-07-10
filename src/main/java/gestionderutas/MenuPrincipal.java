@@ -10,14 +10,16 @@ import datos.Persistencia;
 import transporte.Venta;
 import transporte.Viaje;
 
-/* Clase principal del sistema TransRoute.Contiene el metodo main(), el login de usuarios 
-y la navegacion hacia el menu de Administrador o el menu de Cajero segun el rol
+/* Clase principal del sistema TransRoute. 
+    - Contenedor el metodo main()
+    - el login de usuarios 
+    -Navegacion  del menu de Administrador o el menu de Cajero segun rol
 @author Julian,Angela
  */
 public class MenuPrincipal {
 
     // Un unico Scanner para todos los metodos
-    private static final Scanner SC = new Scanner(System.in);
+    private static final Scanner input = new Scanner(System.in);
 
     // Cantidad maxima de intentos de login antes de cerrar el programa.
     private static final int MAX_INTENTOS_LOGIN = 3;
@@ -103,12 +105,12 @@ public class MenuPrincipal {
     return el Usuario si las credenciales son correctas, null en caso contrario
      */
     public static Usuario login(Usuario[] usuarios, int cantidadUsuarios) {
-        System.out.println("━━━━━━━━━━━━━━━━━━━━ Login ━━━━━━━━━━━━━━━━━━━━━━");
-        System.out.print("Ingresar Nombre de Usuario: ");
-        String nombre = SC.nextLine().trim();
-        System.out.print("Contraseña: ");
-        String contrasena = SC.nextLine().trim();
-        System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        System.out.println("┏━━━━━━━━━━━━━━━━ Login ━━━━━━━━━━━━━━━━━━┓");
+        System.out.print("┃ Ingresar Nombre de Usuario: ");
+        String nombre = input.nextLine().trim();
+        System.out.print("┃ Contraseña: ");
+        String contrasena = input.nextLine().trim();
+        System.out.println("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
 
         if (nombre.isEmpty() || contrasena.isEmpty()) {
             System.out.println("❌ Usuario y contraseña no pueden estar vacios.\n");
@@ -129,21 +131,24 @@ public class MenuPrincipal {
         Administrador adm = new Administrador();
         int opc;
         do {
-            System.out.println("━━━━━━━━━━━━━━ Menu Administrador ━━━━━━━━━━━━━━━━");
-            System.out.println("1. Registrar Ruta");
-            System.out.println("2. Agregar Horario");
-            System.out.println("3. Agregar Nuevo Cajero");
-            System.out.println("4. Ver Reportes");
-            System.out.println("5. Salir");
-            System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            String menuAdmin = """
+                          ┏━━━━━━ Menu Administrador ━━━━━━┓      
+                          ┃ 1. Registrar Ruta              ┃      
+                          ┃ 2. Agregar Horario             ┃      
+                          ┃ 3. Agregar Nuevo Cajero        ┃      
+                          ┃ 4. Ver Reportes                ┃      
+                          ┃ 5. Salir                       ┃      
+                          ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛      
+                          """;
+            System.out.print(menuAdmin);
             opc = leerOpcion("Ingresar opcion: ", 1, 5);
 
             try {
                 switch (opc) {
                     case 1 ->
-                        adm.registrarRuta(persistencia, SC);
+                        adm.registrarRuta(persistencia, input);
                     case 2 ->
-                        adm.agregarHorario(persistencia, SC);
+                        adm.agregarHorario(persistencia, input);
                     case 3 ->
                         System.out.println("⚠️ Agregar Nuevo Cajero: funcionalidad en desarrollo.");
                     case 4 ->
@@ -164,12 +169,15 @@ public class MenuPrincipal {
         Cajero cajero = new Cajero();
         int opc;
         do {
-            System.out.println("━━━━━━━━━━━━━━━━ Menu Cajero ━━━━━━━━━━━━━━━━━━━━");
-            System.out.println("1. Buscar Viajes Disponibles");
-            System.out.println("2. Vender / Reservar Pasaje");
-            System.out.println("3. Ver Reporte de Ventas");
-            System.out.println("4. Salir");
-            System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            String menuCajero = """
+                    ┏━━━━━━━━━ Menu Cajero ━━━━━━━━━┓       
+                    ┃ 1. Buscar Viajes Disponibles  ┃       
+                    ┃ 2. Vender / Reservar Pasaje   ┃       
+                    ┃ 3. Ver Reporte de Ventas      ┃       
+                    ┃ 4. Salir                      ┃       
+                    ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛       
+                    """;
+            System.out.print(menuCajero);
             opc = leerOpcion("Ingresar opcion: ", 1, 4);
 
             try {
@@ -195,7 +203,7 @@ public class MenuPrincipal {
      */
     private static void mostrarViajesDisponibles(Persistencia persistencia) {
         System.out.print("Ingrese el destino a buscar: ");
-        String destino = SC.nextLine().trim();
+        String destino = input.nextLine().trim();
         Viaje[] disponibles = persistencia.buscarViajesPorDestino(destino);
 
         if (disponibles.length == 0) {
@@ -215,7 +223,7 @@ public class MenuPrincipal {
      */
     private static void venderPasajePorDestino(Persistencia persistencia, Cajero cajero) {
         System.out.print("Ingrese el destino: ");
-        String destino = SC.nextLine().trim();
+        String destino = input.nextLine().trim();
 
         Viaje[] disponibles = persistencia.buscarViajesPorDestino(destino);
 
@@ -236,7 +244,7 @@ public class MenuPrincipal {
         }
 
         Viaje viajeElegido = disponibles[opcion - 1];
-        Venta venta = cajero.venderPasaje(viajeElegido, SC);
+        Venta venta = cajero.venderPasaje(viajeElegido, input);
 
         if (venta != null) {
             boolean registrada = persistencia.registrarVenta(venta);
@@ -281,7 +289,7 @@ public class MenuPrincipal {
         while (!valido) {
             System.out.print(mensaje);
             try {
-                valor = Integer.parseInt(SC.nextLine().trim());
+                valor = Integer.parseInt(input.nextLine().trim());
                 if (valor < min || valor > max) {
                     System.out.println("❌ Ingrese un numero entre " + min + " y " + max + ".");
                 } else {

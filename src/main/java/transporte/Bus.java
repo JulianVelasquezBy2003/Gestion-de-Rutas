@@ -1,8 +1,7 @@
 package transporte;
 
-/**
- * @author Julian
- */
+// @author Julian
+ 
 public class Bus {
 
     // Dimensiones estandar del bus segun la consigna: 4 filas x 10 columnas
@@ -23,14 +22,7 @@ public class Bus {
         this.asientos = crearMapaVacio();
     }
 
-    /**
-     * Crea un bus inicializando su mapa de asientos con FILAS x COLUMNAS
-     * posiciones libres.
-     *
-     * @param idBus identificador del bus
-     * @param placa placa del vehiculo
-     * @param capacidad capacidad total de pasajeros
-     */
+    // Crea un bus inicializando su mapa de asientos con FILAS x COLUMNAS posiciones libres.
     public Bus(int idBus, String placa, int capacidad) {
         this.idBus = idBus;
         this.placa = placa;
@@ -38,10 +30,10 @@ public class Bus {
         this.asientos = crearMapaVacio();
     }
 
-    /**
-     * Construye un arreglo 2D de FILAS x COLUMNAS con todas las posiciones
-     * marcadas como libres ('O'). Se usa en el constructor y como respaldo
-     * si el mapa cargado desde el XML llega nulo o con tamano invalido.
+    /* 
+    Construye un arreglo 2D de FILAS x COLUMNAS con todas las posiciones marcadas como 
+    libres ('O'). Se usa en el constructor y como respaldo si el mapa cargado desde el XML 
+    llega nulo o con tamano invalido.
      */
     private char[][] crearMapaVacio() {
         char[][] mapa = new char[FILAS][COLUMNAS];
@@ -79,24 +71,18 @@ public class Bus {
         return asientos;
     }
 
-    /**
-     * Reemplaza el mapa de asientos (por ejemplo, al cargarlo desde el XML).
-     * Si el arreglo recibido es nulo, se conserva un mapa vacio en su lugar
-     * para evitar NullPointerException mas adelante.
-     *
-     * @param asientos matriz de asientos a asignar
+    /*
+    Reemplaza el mapa de asientos (por ejemplo, al cargarlo desde el XML). 
+    Si el arreglo recibido es nulo, se conserva un mapa vacio
      */
     public void setAsientos(char[][] asientos) {
         this.asientos = (asientos != null) ? asientos : crearMapaVacio();
     }
 
-    // ---------- Metodos para el mapa de Asientos ----------
 
-    /**
-     * Muestra en consola la distribucion de asientos del bus.
-     * Las filas se identifican con letras (A, B, C...) y las columnas
-     * con numeros (1, 2, 3...), similar a un bus real.
-     * [O] = libre, [X] = ocupado/vendido.
+    /* 
+    Muestra en consola la distribucion de asientos del bus. Las filas se identifican con letras (A, B, C...) 
+    y las columnas con numeros (1, 2, 3...), similar a un bus real.  [O] = libre, [X] = ocupado/vendido.
      */
     public void mostrarAsientos() {
         if (asientos == null) {
@@ -104,8 +90,8 @@ public class Bus {
             return;
         }
 
-        System.out.println("\n--- Mapa de asientos | Bus: " + placa + " ---");
-
+        System.out.println("\n   --- Mapa de asientos | Bus: " + placa + " ---");
+        System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         // Encabezado con el numero de columna
         System.out.print("     ");
         for (int col = 0; col < asientos[0].length; col++) {
@@ -122,44 +108,23 @@ public class Bus {
             }
             System.out.println();
         }
+        System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         System.out.println("Leyenda: [O] Libre   [X] Ocupado/Vendido\n");
     }
 
-    /**
-     * Verifica si la posicion indicada existe dentro del mapa de asientos.
-     *
-     * @param fila indice de fila (0-based)
-     * @param columna indice de columna (0-based)
-     * @return true si la posicion es valida dentro de la matriz
-     */
+    // Verifica si la posicion indicada existe dentro del mapa de asientos.
     public boolean posicionValida(int fila, int columna) {
-        return asientos != null
-                && fila >= 0 && fila < asientos.length
-                && columna >= 0 && columna < asientos[fila].length;
+        return asientos != null && fila >= 0 && fila < asientos.length && columna >= 0 && columna < asientos[fila].length;
     }
 
-    /**
-     * Indica si el asiento en la posicion dada esta libre.
-     * Se asume que posicionValida(fila, columna) ya fue verificado antes.
-     *
-     * @param fila indice de fila (0-based)
-     * @param columna indice de columna (0-based)
-     * @return true si el asiento esta libre
-     */
+    // Indica si el asiento en la posicion dada esta libre. Se asume que posicionValida(fila, columna) ya fue verificado antes
     public boolean asientoLibre(int fila, int columna) {
         return posicionValida(fila, columna) && asientos[fila][columna] == LIBRE;
     }
 
-    /**
-     * Marca un asiento como ocupado (vendido/reservado).
-     * Valida que la posicion exista y que el asiento no este ya ocupado
-     * antes de modificar la matriz, evitando ArrayIndexOutOfBoundsException
-     * y ventas duplicadas sobre el mismo asiento.
-     *
-     * @param fila indice de fila (0-based)
-     * @param columna indice de columna (0-based)
-     * @return true si el asiento se pudo ocupar, false si estaba ocupado
-     *         o la posicion no existe
+    /* Marca un asiento como ocupado (vendido/reservado). Valida que la posicion exista y 
+    que el asiento no este ya ocupado antes de modificar la matriz, evitando ArrayIndexOutOfBoundsException 
+    y ventas duplicadas sobre el mismo asiento.
      */
     public boolean ocuparAsiento(int fila, int columna) {
         if (!posicionValida(fila, columna)) {
@@ -174,14 +139,7 @@ public class Bus {
         return true;
     }
 
-    /**
-     * Libera un asiento previamente ocupado (por ejemplo, si se anula una
-     * venta).
-     *
-     * @param fila indice de fila (0-based)
-     * @param columna indice de columna (0-based)
-     * @return true si se pudo liberar el asiento
-     */
+    // Libera un asiento previamente ocupado (por ejemplo, si se anula una venta).
     public boolean liberarAsiento(int fila, int columna) {
         if (!posicionValida(fila, columna)) {
             System.out.println("❌ Esa posicion no existe en el mapa de asientos.");
@@ -191,12 +149,7 @@ public class Bus {
         return true;
     }
 
-    /**
-     * Calcula cuantos asientos estan ocupados actualmente. Util para el
-     * reporte de ocupacion del administrador.
-     *
-     * @return cantidad de asientos con estado 'X'
-     */
+    // Calcula cuantos asientos estan ocupados actualmente. Util para el reporte de ocupacion del administrador.
     public int contarAsientosOcupados() {
         int contador = 0;
         if (asientos == null) {

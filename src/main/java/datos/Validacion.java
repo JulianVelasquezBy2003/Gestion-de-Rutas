@@ -14,5 +14,13 @@ public class Validacion {
     /*
     public int leerEntero (){
     }
+    
+    /* 
+    crear metodos para 
+    - leerTextoNoVacio -> ValidarTextoVacio
+    - leerDecimal -> validarDecimal
+    - leerEntero -> validarEntero
+    - leerFila -> validarFila
+    - 
 */
 }
