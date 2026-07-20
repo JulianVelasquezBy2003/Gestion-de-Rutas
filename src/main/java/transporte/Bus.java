@@ -1,7 +1,6 @@
 package transporte;
 
 // @author Julian
- 
 public class Bus {
 
     // Dimensiones estandar del bus segun la consigna: 4 filas x 10 columnas
@@ -25,8 +24,8 @@ public class Bus {
     // Crea un bus inicializando su mapa de asientos con FILAS x COLUMNAS posiciones libres.
     public Bus(int idBus, String placa, int capacidad) {
         this.idBus = idBus;
-        this.placa = placa;
-        this.capacidad = capacidad;
+        this.placa = placa != null ? placa.trim() : "";
+        this.capacidad = Math.max(0, capacidad);
         this.asientos = crearMapaVacio();
     }
 
@@ -49,6 +48,7 @@ public class Bus {
     public int getIdBus() {
         return idBus;
     }
+
     public void setIdBus(int idBus) {
         this.idBus = idBus;
     }
@@ -56,6 +56,7 @@ public class Bus {
     public String getPlaca() {
         return placa;
     }
+
     public void setPlaca(String placa) {
         this.placa = placa;
     }
@@ -63,43 +64,57 @@ public class Bus {
     public int getCapacidad() {
         return capacidad;
     }
-    public void setCapacidad(int capacidad) {
-        this.capacidad = capacidad;
-    }
 
-    public char[][] getAsientos() {
-        return asientos;
+    public void setCapacidad(int capacidad) {
+        if (capacidad < 0) {
+            throw new IllegalArgumentException("Capacidad no puede ser negativa.");
+        }
+        this.capacidad = capacidad;
     }
 
     /*
     Reemplaza el mapa de asientos (por ejemplo, al cargarlo desde el XML). 
     Si el arreglo recibido es nulo, se conserva un mapa vacio
      */
-    public void setAsientos(char[][] asientos) {
-        this.asientos = (asientos != null) ? asientos : crearMapaVacio();
+    public char[][] getAsientos() {
+        if (this.asientos == null) {
+            return null;
+        }
+        char[][] copia = new char[this.asientos.length][];
+        for (int i = 0; i < this.asientos.length; i++) {
+            copia[i] = this.asientos[i].clone();
+        }
+        return copia;
     }
 
+    public void setAsientos(char[][] asientos) {
+        if (asientos == null) {
+            this.asientos = crearMapaVacio();
+            return;
+        }
+        // copiar para no compartir la referencia
+        this.asientos = new char[asientos.length][];
+        for (int i = 0; i < asientos.length; i++) {
+            this.asientos[i] = (asientos[i] != null) ? asientos[i].clone() : new char[COLUMNAS];
+        }
+    }
 
     /* 
     Muestra en consola la distribucion de asientos del bus. Las filas se identifican con letras (A, B, C...) 
     y las columnas con numeros (1, 2, 3...), similar a un bus real.  [O] = libre, [X] = ocupado/vendido.
      */
     public void mostrarAsientos() {
-        if (asientos == null) {
+        if (asientos == null || asientos.length == 0 || asientos[0].length == 0) {
             System.out.println("⚠️ Este bus no tiene un mapa de asientos cargado.");
             return;
         }
-
         System.out.println("\n   --- Mapa de asientos | Bus: " + placa + " ---");
         System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        // Encabezado con el numero de columna
         System.out.print("     ");
         for (int col = 0; col < asientos[0].length; col++) {
             System.out.printf("%-4d", (col + 1));
         }
         System.out.println();
-
-        // Filas identificadas con letras (A, B, C, D...)
         for (int fila = 0; fila < asientos.length; fila++) {
             char letraFila = (char) ('A' + fila);
             System.out.print(" " + letraFila + "  ");
@@ -128,11 +143,9 @@ public class Bus {
      */
     public boolean ocuparAsiento(int fila, int columna) {
         if (!posicionValida(fila, columna)) {
-            System.out.println("❌ Esa posicion no existe en el mapa de asientos.");
             return false;
         }
         if (asientos[fila][columna] == OCUPADO) {
-            System.out.println("❌ Ese asiento ya esta ocupado. Elija otro.");
             return false;
         }
         asientos[fila][columna] = OCUPADO;

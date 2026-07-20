@@ -8,68 +8,62 @@ import datos.Persistencia;
 
 public class GestorArchivo {
 
-    //Atributos
-    private Usuario usuarios;
-    private Ruta[][] rutas;
-    private Viaje[][] viajes;
-    private Venta[] ventas;
+    private final Persistencia persistencia;
 
-    //Constructor
     public GestorArchivo() {
+        this.persistencia = new Persistencia();
     }
 
-    // Métodos
-    // Persistencia
-    public void cargarDatos() {
+    // Carga los datos usando Persistencia y propaga excepciones si las hay.
+    public void cargarDatos() throws Exception {
+        persistencia.cargarXML();      // usuarios
+        persistencia.cargarRutas();    // rutas
+        persistencia.cargarViajes();   // viajes
+        persistencia.cargarVentas();   // ventas
     }
 
-    public void guardarDatos() {
+    // Guarda los datos a persistencia (asientos/ventas/etc).
+    public void guardarDatos() throws Exception {
+        persistencia.guardarDatos();
     }
 
-    // Búsquedas
-    /*
-    public Usuario buscarUsuario(String nombre) {
+    // Búsquedas delegadas (ejemplo)
+    public Usuario buscarUsuarioPorNombre(String nombre) {
+        Usuario[] usuarios = persistencia.getUsuarios();
+        if (usuarios == null) return null;
+        for (Usuario u : usuarios) {
+            if (u != null && nombre.equals(u.getNombre())) return u;
+        }
+        return null;
     }
 
-    public Ruta buscarRuta(int id) {
+    public Ruta buscarRutaPorId(int id) {
+        Ruta[] rutas = persistencia.getRutas(); // suponiendo que Persistencia devuelve Ruta[]
+        if (rutas == null) return null;
+        for (Ruta r : rutas) {
+            if (r != null && r.getIdRuta() == id) return r;
+        }
+        return null;
     }
 
-    public Viaje buscarViaje(int id) {
+    public Viaje buscarViajePorId(int id) {
+        Viaje[] viajes = persistencia.getTodosLosViajes(); // o getViajes()
+        if (viajes == null) return null;
+        for (Viaje v : viajes) {
+            if (v != null && v.getIdViaje() == id) return v;
+        }
+        return null;
     }
 
-    // Operaciones
-    public void registrarVenta(Venta venta) {
+    // Registrar venta delegando en Persistencia (si existe ese método)
+    public boolean registrarVenta(Venta venta) {
+        return persistencia.registrarVenta(venta);
     }
 
-    public void registrarRuta(Ruta ruta) {
-    }
-
-    public void registrarUsuario(Usuario usuario) {
-    }
-
-    // Getters y Setters
-    public Usuario[] getUsuarios() {
-    }
-
-    public void setUsuarios(Usuario[] usuarios) {
-    }
-
-    public Ruta[] getRutas() {
-    }
-
-    public void setRutas(Ruta[] rutas) {
-    }
-
-    public Viaje[][] getViajes() {
-    }
-
-    public void setViajes(Viaje[][] viajes) {
-    }
-
-    public Venta[] getVentas() {
-    }
-
-    public void setVentas(Venta[] ventas) {
-    }
-*/
+    // Getters de conveniencia (devuelven directamente lo de Persistencia)
+    public Usuario[] getUsuarios() { return persistencia.getUsuarios(); }
+    public Ruta[] getRutas() { return persistencia.getRutas(); }
+    public Viaje[] getViajes() { return persistencia.getTodosLosViajes(); }
+    public Venta[] getVentas() { return persistencia.getVentasRegistradas(); }
 }
+

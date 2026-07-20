@@ -3,6 +3,7 @@ package modelo;
 import java.time.LocalDate;
 import java.util.Scanner;
 
+import datos.Persistencia;
 import datos.Validacion;
 import transporte.Bus;
 import transporte.Boleto;
@@ -14,7 +15,7 @@ import transporte.Viaje;
 Usuario con rol Cajero/Counter. 
 Se encarga de la venta y reserva de pasajes: mostrar el mapa de asientos, 
 registrar al pasajero, ocupar el asiento elegido y generar el comprobante de venta.
-  */
+ */
 public class Cajero extends Usuario {
 
     public Cajero() {
@@ -28,9 +29,8 @@ public class Cajero extends Usuario {
         super(id, nombre, contraseña, rol);
     }
 
-    // Venta / Reserva de pasaje 
-
-    /*
+    /* 
+    Venta / Reserva de pasaje 
      1. Muestra el mapa de asientos, pide la posicion deseada,
      2. Registra al pasajero, calcula el precio final (con descuentos si corresponde) y genera el comprobante.
      */
@@ -39,149 +39,140 @@ public class Cajero extends Usuario {
             System.out.println("❌ El viaje seleccionado no tiene bus o ruta asignados.");
             return null;
         }
-
         Bus bus = viaje.getBus();
         bus.mostrarAsientos();
 
-        // 1.Elegir un asiento libre 
-        int fila = -1;
-        int columna = -1;
-        boolean asientoDisponible = false;
-        while (!asientoDisponible) {
-            fila = leerFila(entrada, bus);
-            columna = leerColumna(entrada, bus);
-            if (bus.asientoLibre(fila, columna)) {
-                asientoDisponible = true;
-            } else {
-                System.out.println("❌ Ese asiento no esta disponible. Elija otro.\n");
+        System.out.print("Ingrese la fila del asiento (Letra, ej. A): ");
+        String textoFila = entrada.nextLine();
+        System.out.print("Ingrese el numero de asiento (1 a " + bus.getAsientos()[0].length + "): ");
+        String textoColumna = entrada.nextLine();
+        System.out.print("DNI del pasajero (8 digitos): ");
+        String dni = entrada.nextLine();
+        System.out.print("Nombre del pasajero: ");
+        String nombre = entrada.nextLine();
+        System.out.print("Edad del pasajero: ");
+        String textoEdad = entrada.nextLine();
+        try {
+            // Validar y parsear usando métodos estáticos de Validacion
+            int fila = Validacion.validarYParsearFila(textoFila, bus.getAsientos().length);
+            int columna = Validacion.validarYParsearColumna(textoColumna, bus.getAsientos()[0].length);
+            Validacion.validarDniOExcepcion(dni);
+            Validacion.validarTextoNoVacioOExcepcion(nombre, "Nombre del pasajero");
+            int edad = Validacion.validarYParsearEdad(textoEdad);
+            // Validar estado del asiento respecto al bus
+            Validacion.validarAsientoConBus(bus, fila, columna);
+            // Ocupar el asiento
+            if (!bus.ocuparAsiento(fila, columna)) {
+                throw new IllegalStateException("No se pudo completar la venta: el asiento ya no esta disponible.");
             }
-        }
 
-        // 2. Registrar datos del pasajero 
-        Pasajero pasajero = leerPasajero(entrada);
+            Pasajero pasajero = new Pasajero(dni.trim(), nombre.trim(), edad);
+            // Calcular precio con descuentos si aplica
+            double precioBase = viaje.getRuta().getPrecioBase();
+            double precioFinal = pasajero.calcularPrecioFinal(precioBase, edad);
+            // Registrar la venta
+            String fechaHoy = LocalDate.now().toString();
+            Venta venta = new Venta();
+            venta.setIdVenta(Venta.generarSiguienteId());
+            venta.setFecha(fechaHoy);
+            venta.setPrecioFinal(precioFinal);
+            venta.setPasajero(pasajero);
+            venta.setViaje(viaje);
 
-        // 3. Ocupar el asiento (doble verificacion por seguridad)
-        if (!bus.ocuparAsiento(fila, columna)) {
-            System.out.println("❌ No se pudo completar la venta: el asiento ya no esta disponible.");
+            // Generar boleto y comprobante
+            Boleto boleto = new Boleto(Boleto.generarSiguienteId(), fechaHoy, fila, columna, precioFinal);
+            System.out.println();
+            boleto.emitirComprobante();
+            System.out.println(venta.generarComprobante());
+            System.out.println("\n✅ Venta registrada correctamente.\n");
+            return venta;
+        } catch (IllegalArgumentException | IllegalStateException datosInvalidos) {
+            System.out.println("❌ " + datosInvalidos.getMessage());
+            return null;
+        } catch (Exception errorInesperado) {
+            System.out.println("❌ No se pudo completar la venta: " + errorInesperado.getMessage());
             return null;
         }
+    }
 
-        //  4. Calcular precio con descuentos si aplica 
-        double precioBase = viaje.getRuta().getPrecioBase();
-        double precioFinal = pasajero.calcularPrecioFinal(precioBase, pasajero.getEdad());
-
-        //  5. Registrar la venta 
-        String fechaHoy = LocalDate.now().toString();
-
-        Venta venta = new Venta();
-        venta.setIdVenta(Venta.generarSiguienteId());
-        venta.setFecha(fechaHoy);
-        venta.setPrecioFinal(precioFinal);
-        venta.setPasajero(pasajero);
-        venta.setViaje(viaje);
-
-        // 6. Generar boleto y comprobante 
-        Boleto boleto = new Boleto(Boleto.generarSiguienteId(), fechaHoy, fila, columna, precioFinal);
-
+    // Pide un destino y muestra (sin vender) los viajes programados hacia ese destino, recorriendo la matriz/listado en Persistencia.
+    public void mostrarViajesDisponibles(Persistencia persistencia, Scanner entrada) {
+        System.out.print("Ingrese el destino a buscar: ");
+        String destino = entrada.nextLine().trim();
+        try {
+            Validacion.validarTextoNoVacioOExcepcion(destino, "Destino");
+        } catch (IllegalArgumentException e) {
+            System.out.println("❌ " + e.getMessage());
+            return;
+        }
+        Viaje[] disponibles = persistencia.buscarViajesPorDestino(destino);
+        if (disponibles == null || disponibles.length == 0) {
+            System.out.println("⚠️ No se encontraron viajes programados hacia \"" + destino + "\".\n");
+            return;
+        }
+        System.out.println("\n--- Viajes disponibles hacia " + destino + " ---");
+        for (int i = 0; i < disponibles.length; i++) {
+            imprimirResumenViaje(i + 1, disponibles[i]);
+        }
         System.out.println();
-        boleto.emitirComprobante();
-        System.out.println(venta.generarComprobante());
-        System.out.println("\n✅ Venta registrada correctamente.\n");
-
-        return venta;
     }
 
-    /*
-    Pide la fila del asiento como letra (A, B, C...) y la convierte a indice 0, reintentando ante entradas invalidas.
-     */
-    private int leerFila(Scanner entrada, Bus bus) {
-        int filaIndex = -1;
-        int totalFilas = bus.getAsientos().length;
+    // Pide un destino, muestra los viajes disponibles y permite elegir uno para iniciar el flujo completo de venta/reserva de pasaje.
+    public void venderPasajePorDestino(Persistencia persistencia, Scanner entrada) {
+        System.out.print("Ingrese el destino: ");
+        String destino = entrada.nextLine().trim();
+        Viaje[] disponibles = persistencia.buscarViajesPorDestino(destino);
 
-        while (filaIndex < 0 || filaIndex >= totalFilas) {
-            System.out.print("Ingrese la fila del asiento (Letra, ej. A): ");
-            String texto = entrada.nextLine().trim().toUpperCase();
+        if (disponibles == null || disponibles.length == 0) {
+            System.out.println("⚠️ No se encontraron viajes programados hacia \"" + destino + "\".\n");
+            return;
+        }
+        System.out.println("\n--- Viajes disponibles hacia " + destino + " ---");
+        for (int i = 0; i < disponibles.length; i++) {
+            imprimirResumenViaje(i + 1, disponibles[i]);
+        }
 
-            if (texto.length() == 1 && Character.isLetter(texto.charAt(0))) {
-                filaIndex = texto.charAt(0) - 'A';
-            } else {
-                filaIndex = -1;
-            }
-            if (filaIndex < 0 || filaIndex >= totalFilas) {
-                System.out.println("❌ Fila invalida. Debe ser una letra entre A y "
-                        + (char) ('A' + totalFilas - 1) + ".");
+        int opcion = leerOpcion(entrada, "Elija el viaje (0 para cancelar): ", 0, disponibles.length);
+        if (opcion == 0) {
+            System.out.println("Operacion cancelada.\n");
+            return;
+        }
+
+        Viaje viajeElegido = disponibles[opcion - 1];
+        Venta venta = this.venderPasaje(viajeElegido, entrada);
+
+        if (venta != null) {
+            boolean registrada = persistencia.registrarVenta(venta);
+            if (!registrada) {
+                System.out.println("⚠️ La venta se realizo pero no se pudo guardar en el historial (limite alcanzado).");
             }
         }
-        return filaIndex;
     }
 
-    /* Pide el numero de columna del asiento ( tal como lo ve el usuario) 
-    y lo convierte a indice 0-based, reintentando ante entradas invalidas o fuera de rango.
-     */
-    private int leerColumna(Scanner sc, Bus bus) {
-        int columnaIndex = -1;
-        int totalColumnas = bus.getAsientos()[0].length;
+    // Imprime una linea de resumen de un viaje (ruta, fecha, hora, bus, precio y ocupacion actual),
+    private void imprimirResumenViaje(int numero, Viaje viaje) {
+        String origen = (viaje.getRuta() != null) ? viaje.getRuta().getOrigen() : "N/D";
+        String destinoRuta = (viaje.getRuta() != null) ? viaje.getRuta().getDestino() : "N/D";
+        double precio = (viaje.getRuta() != null) ? viaje.getRuta().getPrecioBase() : 0.0;
+        String placa = (viaje.getBus() != null) ? viaje.getBus().getPlaca() : "N/D";
+        int ocupados = (viaje.getBus() != null) ? viaje.getBus().contarAsientosOcupados() : 0;
+        int capacidad = (viaje.getBus() != null) ? viaje.getBus().getCapacidad() : 0;
 
-        while (columnaIndex < 0 || columnaIndex >= totalColumnas) {
-            System.out.print("Ingrese el numero de asiento (1 a " + totalColumnas + "): ");
+        System.out.printf("%d. %s -> %s | %s %s | Bus %s | S/ %.2f | Ocupacion: %d/%d%n",
+                numero, origen, destinoRuta, viaje.getFecha(), viaje.getHora(), placa, precio, ocupados, capacidad);
+    }
+
+    //Lee un numero entero desde el Scanner dentro de un rango [min, max], reintentando en caso de error.
+    private static int leerOpcion(Scanner entrada, String mensaje, int min, int max) {
+        while (true) {
+            System.out.print(mensaje);
+            String input = entrada.nextLine().trim();
             try {
-                int valor = Integer.parseInt(sc.nextLine().trim());
-                columnaIndex = valor - 1;
-            } catch (NumberFormatException errorNoExisteColumna) {
-                columnaIndex = -1;
-            }
-
-            if (columnaIndex < 0 || columnaIndex >= totalColumnas) {
-                System.out.println("❌ Numero de asiento invalido. Debe estar entre 1 y " + totalColumnas + ".");
+                return Validacion.validarYParsearEntero(input, "Opción", min, max);
+            } catch (IllegalArgumentException e) {
+                System.out.println("❌ " + e.getMessage());
             }
         }
-        return columnaIndex;
     }
 
-    /* Pide DNI, nombre y edad del pasajero, validando cada campo antes de continuar 
-    (DNI de 8 digitos, nombre no vacio, edad numerica y dentro de un rango razonable).
-     */
-    private Pasajero leerPasajero(Scanner entrada) {
-        Validacion validacion = new Validacion();
-
-        String dni = "";
-        boolean dniValido = false;
-        while (!dniValido) {
-            System.out.print("DNI del pasajero (8 digitos): ");
-            dni = entrada.nextLine().trim();
-            dniValido = validacion.validarDni(dni);
-            if (!dniValido) {
-                System.out.println("❌ DNI invalido. Debe tener exactamente 8 digitos numericos.");
-            }
-        }
-        String nombre = "";
-        while (nombre.isEmpty()) {
-            System.out.print("Nombre del pasajero: ");
-            nombre = entrada.nextLine().trim();
-            if (nombre.isEmpty()) {
-                System.out.println("❌ El nombre no puede estar vacio.");
-            }
-        }
-        int edad = leerEdad(entrada);
-        return new Pasajero(dni, nombre, edad);
-    }
-
-    /* Pide la edad del pasajero de forma segura, reintentando si el usuario 
-    ingresa texto no numerico o un valor fuera de rango.
-     */
-    private int leerEdad(Scanner entrada) {
-        int edad = -1;
-        while (edad < 0 || edad > 120) {
-            System.out.print("Edad del pasajero: ");
-            try {
-                edad = Integer.parseInt(entrada.nextLine().trim());
-            } catch (NumberFormatException edadNoValida) {
-                edad = -1;
-            }
-            if (edad < 0 || edad > 120) {
-                System.out.println("❌ Edad invalida. Ingrese un numero entre 0 y 120.");
-            }
-        }
-        return edad;
-    }
 }
