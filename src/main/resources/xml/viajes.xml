@@ -1,21 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<root>
-    <viajes>
-        <viaje columna="0" fila="0" id="1">
-            <fecha>2026-07-15</fecha>
-            <hora>08:00</hora>
-            <idRuta>1</idRuta>
-            <bus>
-                <id>1</id>
-                <placa>ABC-123</placa>
-                <capacidad>40</capacidad>
-                <asientos>
-                    <fila index="0">OOOOOOOOOO</fila>
-                    <fila index="1">OOOOOOOOOO</fila>
-                    <fila index="2">OOOOOOOOOO</fila>
-                    <fila index="3">OOOOOOOOOO</fila>
-                </asientos>
-            </bus>
-        </viaje>
-    </viajes>
-</root>
+<viajes>
+    <viaje columna="0" fila="0" id="1">
+        <fecha>2026-07-15</fecha>
+        <hora>08:00</hora>
+        <idRuta>1</idRuta>
+        <idBus>1</idBus>
+    </viaje>
+    
+</viajes>

@@ -1,59 +1,49 @@
 package modelo;
 
-/**
- * Representa un usuario del sistema con autenticación y rol.
- *
- * @author Julian
+/*
+Representa un usuario del sistema.
+Clase base para Administrador y Cajero.
+@author Julian
  */
 public class Usuario {
+
+    public static final String ROL_ADMIN = "admin";
+    public static final String ROL_CAJERO = "cajero";
 
     private int id;
     private String nombre;
     private String contrasena;
     private String rol;
 
-    public Usuario() {
-    }
+    public Usuario() { }
 
     public Usuario(int id, String nombre, String contrasena) {
-        if (nombre == null || nombre.trim().isEmpty()) {
-            throw new IllegalArgumentException("Nombre no puede estar vacío.");
-        }
-        if (contrasena == null || contrasena.trim().isEmpty()) {
-            throw new IllegalArgumentException("Contraseña no puede estar vacía.");
-        }
-        if (contrasena.length() < 6) {
-            throw new IllegalArgumentException("Contraseña debe tener al menos 6 caracteres.");
-        }
-
         this.id = id;
-        this.nombre = nombre.trim();
-        this.contrasena = contrasena.trim();
+        this.nombre = nombre;
+        this.contrasena = contrasena;
     }
 
     public Usuario(int id, String nombre, String contrasena, String rol) {
         this(id, nombre, contrasena);
-        if (rol == null || rol.trim().isEmpty()) {
-            throw new IllegalArgumentException("Rol no puede estar vacío.");
-        }
-        this.rol = rol.trim();
+        setRol(rol);
     }
 
     public int getId() {
         return id;
     }
-
     public void setId(int id) {
+        if (id <= 0) {
+            throw new IllegalArgumentException("El ID debe ser un número positivo.");
+        }
         this.id = id;
     }
 
     public String getNombre() {
         return nombre;
     }
-
     public void setNombre(String nombre) {
-        if (nombre == null || nombre.trim().isEmpty()) {
-            throw new IllegalArgumentException("Nombre no puede estar vacío.");
+        if (nombre == null || nombre.trim().length() < 2) {
+            throw new IllegalArgumentException("El nombre debe tener al menos 2 caracteres.");
         }
         this.nombre = nombre.trim();
     }
@@ -61,13 +51,9 @@ public class Usuario {
     public String getContrasena() {
         return contrasena;
     }
-
     public void setContrasena(String contrasena) {
-        if (contrasena == null || contrasena.trim().isEmpty()) {
-            throw new IllegalArgumentException("Contraseña no puede estar vacía.");
-        }
-        if (contrasena.length() < 6) {
-            throw new IllegalArgumentException("Contraseña debe tener al menos 6 caracteres.");
+        if (contrasena == null || contrasena.trim().length() < 6) {
+            throw new IllegalArgumentException("La contraseña debe tener al menos 6 caracteres.");
         }
         this.contrasena = contrasena.trim();
     }
@@ -75,65 +61,45 @@ public class Usuario {
     public String getRol() {
         return rol;
     }
-
     public void setRol(String rol) {
-        if (rol == null || rol.trim().isEmpty()) {
-            throw new IllegalArgumentException("Rol no puede estar vacío.");
+        if (!esRolValido(rol)) {
+            throw new IllegalArgumentException("Rol inválido. Debe ser 'admin' o 'cajero'.");
         }
-        this.rol = rol.trim();
+        this.rol = rol.toLowerCase().trim();
     }
 
-    /**
-     * Cambia la contraseña del usuario con validaciones de seguridad.
-     *
-     * @param contrasenaActual la contraseña actual para verificación
-     * @param nuevaContrasena la nueva contraseña a establecer
-     * @throws IllegalArgumentException si la contraseña actual es incorrecta o
-     * la nueva no cumple requisitos
-     */
-    public void cambiarContrasena(String contrasenaActual, String nuevaContrasena) {
-        if (contrasenaActual == null || !contrasenaActual.equals(this.contrasena)) {
+    // --------------------------- MÉTODOS ---------------------------
+    // Verifica si la contraseña ingresada coincide con la del usuario
+    public boolean verificarContrasena(String contrasena) {
+        return this.contrasena.equals(contrasena);
+    }
+    // Cambia la contraseña verificando la actual
+    public void cambiarContrasena(String actual, String nueva) {
+        if (!verificarContrasena(actual)) {
             throw new IllegalArgumentException("Contraseña actual incorrecta.");
         }
-        if (nuevaContrasena == null || nuevaContrasena.trim().isEmpty()) {
-            throw new IllegalArgumentException("Nueva contraseña no puede estar vacía.");
-        }
-        if (nuevaContrasena.length() < 6) {
-            throw new IllegalArgumentException("Nueva contraseña debe tener al menos 6 caracteres.");
-        }
-        if (nuevaContrasena.equals(this.contrasena)) {
-            throw new IllegalArgumentException("La nueva contraseña no puede ser igual a la actual.");
-        }
-        this.contrasena = nuevaContrasena.trim();
+        setContrasena(nueva);
     }
 
-    /**
-     * Verifica si la contraseña proporcionada es correcta.
-     *
-     * @param contrasena contraseña a verificar
-     * @return true si la contraseña es correcta
-     */
-    public boolean verificarContrasena(String contrasena) {
-        return contrasena != null && contrasena.equals(this.contrasena);
+    // Devuelve true si el usuario es Administrador.
+    public boolean esAdministrador() {
+        return ROL_ADMIN.equals(rol);
     }
 
-    /**
-     * Valida si el rol es válido en el sistema.
-     *
-     * @param rol rol a validar
-     * @return true si el rol es válido
-     */
+    // Devuelve true si el usuario es Cajero.
+    public boolean esCajero() {
+        return ROL_CAJERO.equals(rol);
+    }
+
+    // Valida si un rol es válido (admin o cajero).
     public static boolean esRolValido(String rol) {
-        return rol != null && (rol.equalsIgnoreCase("administrador")
-                || rol.equalsIgnoreCase("vendedor")
-                || rol.equalsIgnoreCase("gerente"));
+        if (rol == null) return false;
+        String r = rol.toLowerCase().trim();
+        return r.equals(ROL_ADMIN) || r.equals(ROL_CAJERO);
     }
 
     @Override
     public String toString() {
-        return String.format("Usuario #%d | %s | Rol: %s",
-                id,
-                nombre != null ? nombre : "N/D",
-                rol != null ? rol : "N/D");
+        return String.format("Usuario{id=%d, nombre='%s', rol='%s'}", id, nombre, rol);
     }
 }

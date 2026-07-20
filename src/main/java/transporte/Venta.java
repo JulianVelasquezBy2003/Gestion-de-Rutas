@@ -1,7 +1,9 @@
 package transporte;
 
+import datos.Validacion;
+
 /*
-Representa una venta de pasaje para un viaje específico.
+Representa una venta de pasaje para un viaje.
 @author Julian
  */
 public class Venta {
@@ -14,26 +16,14 @@ public class Venta {
     private Pasajero pasajero;
     private Viaje viaje;
 
-    public Venta() {
+    public Venta() { 
     }
 
     public Venta(String fecha, double precioFinal, Pasajero pasajero, Viaje viaje) {
-        if (fecha == null || fecha.trim().isEmpty()) {
-            throw new IllegalArgumentException("Fecha no puede estar vacía.");
-        }
-        if (precioFinal < 0) {
-            throw new IllegalArgumentException("Precio final no puede ser negativo.");
-        }
-        if (pasajero == null) {
-            throw new IllegalArgumentException("Pasajero no puede ser nulo.");
-        }
-        if (viaje == null) {
-            throw new IllegalArgumentException("Viaje no puede ser nulo.");
-        }
-        this.fecha = fecha.trim();
-        this.precioFinal = precioFinal;
-        this.pasajero = pasajero;
-        this.viaje = viaje;
+        setFecha(fecha);
+        setPrecioFinal(precioFinal);
+        setPasajero(pasajero);
+        setViaje(viaje);
     }
 
     public static int generarSiguienteId() {
@@ -44,63 +34,41 @@ public class Venta {
         siguienteId = valor;
     }
 
-    public int getIdVenta() {
-        return idVenta;
-    }
-
+    // Getters y Setters
+    public int getIdVenta() { return idVenta; }
     public void setIdVenta(int idVenta) {
+        if (idVenta <= 0) throw new IllegalArgumentException("ID de venta debe ser positivo.");
         this.idVenta = idVenta;
     }
 
-    public String getFecha() {
-        return fecha;
-    }
-
+    public String getFecha() { return fecha; }
     public void setFecha(String fecha) {
-        if (fecha == null || fecha.trim().isEmpty()) {
-            throw new IllegalArgumentException("Fecha no puede estar vacía.");
-        }
+        Validacion.validarTextoNoVacio(fecha, "Fecha");
         this.fecha = fecha.trim();
     }
 
-    public double getPrecioFinal() {
-        return precioFinal;
-    }
-
+    public double getPrecioFinal() { return precioFinal; }
     public void setPrecioFinal(double precioFinal) {
-        if (precioFinal < 0) {
-            throw new IllegalArgumentException("Precio final no puede ser negativo.");
-        }
+        if (precioFinal < 0) throw new IllegalArgumentException("Precio no puede ser negativo.");
         this.precioFinal = precioFinal;
     }
 
-    public Pasajero getPasajero() {
-        return pasajero;
-    }
-
+    public Pasajero getPasajero() { return pasajero; }
     public void setPasajero(Pasajero pasajero) {
-        if (pasajero == null) {
-            throw new IllegalArgumentException("Pasajero no puede ser nulo.");
-        }
+        if (pasajero == null) throw new IllegalArgumentException("Pasajero no puede ser nulo.");
         this.pasajero = pasajero;
     }
 
-    public Viaje getViaje() {
-        return viaje;
-    }
-
+    public Viaje getViaje() { return viaje; }
     public void setViaje(Viaje viaje) {
-        if (viaje == null) {
-            throw new IllegalArgumentException("Viaje no puede ser nulo.");
-        }
+        if (viaje == null) throw new IllegalArgumentException("Viaje no puede ser nulo.");
         this.viaje = viaje;
     }
 
     public String generarComprobante() {
-        if (pasajero == null || viaje == null) {
-            throw new IllegalStateException("No se puede generar comprobante: faltan datos de pasajero o viaje.");
+        if (pasajero == null || viaje == null || viaje.getRuta() == null) {
+            throw new IllegalStateException("Datos incompletos para generar comprobante.");
         }
-
         StringBuilder sb = new StringBuilder();
         sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
         sb.append("  COMPROBANTE DE VENTA\n");
@@ -117,6 +85,6 @@ public class Venta {
 
     @Override
     public String toString() {
-        return "Venta #" + idVenta + " - S/ " + String.format("%.2f", precioFinal);
+        return String.format("Venta #%d - S/ %.2f", idVenta, precioFinal);
     }
 }

@@ -8,192 +8,460 @@ import transporte.Bus;
 import transporte.Ruta;
 import transporte.Viaje;
 
-// Usuario con rol Administrador. Se encarga de la configuracion logistica: registrar rutas, horarios y cuentas de cajero
+/*
+Administrador: configura la logística del sistema
+- Registra rutas, agrega horarios, gestiona cajeros y contraseñas
+@author Angela
+ */
 public class Administrador extends Usuario {
-    
+
+    // Constantes para límites de la matriz
+    private static final int MAX_DESTINOS = Persistencia.getMaxDestinos();
+    private static final int MAX_HORARIOS = Persistencia.getMaxHorarios();
+
     //Constructores
     public Administrador() {
     }
 
-    public Administrador(int id, String nombre, String contraseña, String rol) {
-        super(id, nombre, contraseña, rol);
+    public Administrador(int id, String nombre, String contrasena, String rol) {
+        super(id, nombre, contrasena, rol);
     }
 
-    // Metodos
-    /* 
-    1. Pide los datos de una nueva ruta por consola y la guarda en rutas.xml. 
-    2. Reutiliza el Scanner y el objeto Persistencia que le pasa
-    3. sincronizacion con el resto de la sesion: despues de guardar, 
-    vuelve a cargar las rutas para que el arreglo en memoria quede al dia.
+    // ----------------------------- GESTIÓN DE RUTAS -----------------------------
+    /*
+     Registra una nueva ruta con validaciones completas.
+     - Origen y destino: texto no vacío y distintos.
+     - Duración: entre 0.1 y 1000 horas.
+     - Precio: entre 0.1 y 1,000,000 soles.
+     - No permite duplicados (mismo origen/destino).
+     - Guarda inmediatamente en el archivo XML usando guardarRuta()
      */
     public void registrarRuta(Persistencia persistencia, Scanner entrada) {
         System.out.println("\n━━━━━━━━ Registrar Nueva Ruta ━━━━━━━━");
-        System.out.print("Desde donde es su Origen: ");
-        String origen = entrada.nextLine().trim();
-        System.out.print("Cual es su Destino: ");
-        String destino = entrada.nextLine().trim();
-        System.out.print("Cual seria su duracion estimada (horas): ");
-        String textoDuracion = entrada.nextLine().trim();
-        System.out.print("Su Precio Base (S/): ");
-        String textoPrecio = entrada.nextLine().trim();
-        System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
+        String origen = "";
+        while (true) {
+            System.out.print("Origen: ");
+            origen = entrada.nextLine().trim();
+            try {
+                Validacion.validarTextoNoVacio(origen, "Origen");
+                break;
+            } catch (IllegalArgumentException noIngresoTexto) {
+                System.out.println("✖ " + noIngresoTexto.getMessage());
+            }
+        }
+        String destino = "";
+        while (true) {
+            System.out.print("Destino: ");
+            destino = entrada.nextLine().trim();
+            try {
+                Validacion.validarTextoNoVacio(destino, "Destino");
+                if (origen.equalsIgnoreCase(destino)) {
+                    throw new IllegalArgumentException("Origen y destino no pueden ser iguales.");
+                }
+                break;
+            } catch (IllegalArgumentException noIngresoTexto) {
+                System.out.println("✖ " + noIngresoTexto.getMessage());
+            }
+        }
+        double duracion = 0;
+        while (true) {
+            System.out.print("Duración estimada (horas): ");
+            String texto = entrada.nextLine().trim();
+            try {
+                duracion = Validacion.parsearDecimal(texto, "Duración", 0.1, 1000.0);
+                break;
+            } catch (IllegalArgumentException duracionInvalida) {
+                System.out.println("✖ " + duracionInvalida.getMessage());
+            }
+        }
+        double precio = 0;
+        while (true) {
+            System.out.print("Precio Base (S/): ");
+            String texto = entrada.nextLine().trim();
+            try {
+                precio = Validacion.parsearDecimal(texto, "Precio", 0.1, 1_000_000.0);
+                break;
+            } catch (IllegalArgumentException e) {
+                System.out.println("✖ " + e.getMessage());
+            }
+        }
+        // Validar ruta duplicada (ya tenemos origen y destino válidos)
+        if (rutaExiste(persistencia, origen, destino)) {
+            System.out.println("✖ Ya existe una ruta de \"" + origen + "\" a \"" + destino + "\".");
+            return;
+        }
         try {
-            Validacion.validarTextoNoVacioOExcepcion(origen, "Origen");
-            Validacion.validarTextoNoVacioOExcepcion(destino, "Destino");
-
-            double duracion = Validacion.validarYParsearDecimal(textoDuracion, "Duracion estimada (horas)", 0.0, 1000.0);
-            double precio = Validacion.validarYParsearDecimal(textoPrecio, "Precio base", 0.0, 1_000_000.0);
-
             Ruta nuevaRuta = new Ruta(origen, destino, duracion, precio);
             persistencia.guardarRuta(nuevaRuta);
-            // Refresca el arreglo de rutas en memoria para que la nueva
-            // ruta este disponible de inmediato en el resto de la sesion.
-            persistencia.cargarRutas();
-            System.out.println("✅ Ruta registrada correctamente (ID " + nuevaRuta.getIdRuta() + ").");
-        } catch (IllegalArgumentException datosInvalidos) {
-            System.out.println("❌ " + datosInvalidos.getMessage());
-        } catch (Exception errorAlGuardarRuta) {
-            System.out.println("❌ No se pudo guardar la ruta: " + errorAlGuardarRuta.getMessage());
+            System.out.println("✔ Ruta registrada (ID " + nuevaRuta.getIdRuta() + ").");
+        } catch (Exception rutaYaExistente) {
+            System.out.println("✖ " + rutaYaExistente.getMessage());
         }
     }
 
+    // Verifica si ya existe una ruta con el mismo origen y destino.
+    private boolean rutaExiste(Persistencia persistencia, String origen, String destino) {
+        for (int i = 0; i < persistencia.getCantidadRutas(); i++) {
+            Ruta r = persistencia.getRutas()[i];
+            if (r.getOrigen().equalsIgnoreCase(origen) && r.getDestino().equalsIgnoreCase(destino)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ----------------------------- AGREGAR HORARIOS -----------------------------
     /*
-    1. Agrega un nuevo horario (Viaje) a la matriz Destinos x Frecuencias.
-    2. El administrador elige una ruta ya registrada; el sistema ubica automaticamente la fila de la matriz 
-    correspondiente al destino de esa ruta (o reserva una fila nueva si es el primer horario hacia ese destino),
-    y busca la primera columna (frecuencia horaria) libre dentro de esa fila. Luego pide los datos del 
-    bus asignado y guarda el horario en viajes.xml.
+    Asigna un bus a una ruta en una fecha y hora específicas
+    - Muestra rutas disponibles
+    - Valida fecha (YYYY-MM-DD), hora (HH:MM), placa (3 letras + 3 números)
+    - Busca fila (destino) y columna (horario) libres en la matriz
+    - No permite duplicados (mismo destino, fecha y hora)
+    - Si la placa ya existe, reutiliza el bus; si no, crea uno nuevo
+    - Verifica que el bus no esté ocupado en el mismo horario
+    - Guarda inmediatamente la matriz de viajes y los buses en XML
      */
     public void agregarHorario(Persistencia persistencia, Scanner entrada) {
+        // Validar que haya rutas
         if (persistencia.getCantidadRutas() == 0) {
-            System.out.println("⚠️ No hay rutas registradas todavia. Registre una ruta primero (opcion 1).");
+            System.out.println("⚠️ No hay rutas. Registre una primero (opción 1).");
+            return;
+        }
+        // Mostrar rutas disponibles
+        System.out.println("\n━━━━━━━━ Rutas disponibles ━━━━━━━━");
+        Ruta[] rutas = persistencia.getRutas();
+        for (int i = 0; i < persistencia.getCantidadRutas(); i++) {
+            Ruta r = rutas[i];
+            System.out.printf("%d. %s -> %s | S/ %.2f%n", r.getIdRuta(), r.getOrigen(), r.getDestino(), r.getPrecioBase());
+        }
+        System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        int idRuta = 0;
+        Ruta ruta = null;
+        while (true) {
+            System.out.print("ID de ruta: ");
+            String texto = entrada.nextLine().trim();
+            try {
+                idRuta = Validacion.parsearEntero(texto, "ID de ruta", 1, 1_000_000);
+                ruta = persistencia.buscarRutaPorId(idRuta);
+                if (ruta == null) {
+                    System.out.println("✖ No existe ruta con ID " + idRuta + ".");
+                    continue;
+                }
+                break;
+            } catch (IllegalArgumentException e) {
+                System.out.println("✖ " + e.getMessage());
+            }
+        }
+        String fecha = "";
+        while (true) {
+            System.out.print("Fecha (YYYY-MM-DD): ");
+            fecha = entrada.nextLine().trim();
+            try {
+                validarFecha(fecha);
+                break;
+            } catch (IllegalArgumentException e) {
+                System.out.println("✖ " + e.getMessage());
+            }
+        }
+        String hora = "";
+        while (true) {
+            System.out.print("Hora (HH:MM): ");
+            hora = entrada.nextLine().trim();
+            try {
+                Validacion.validarHora(hora);
+                break;
+            } catch (IllegalArgumentException e) {
+                System.out.println("✖ " + e.getMessage());
+            }
+        }
+        String placa = "";
+        Bus bus = null;
+        while (true) {
+            System.out.print("Placa del bus (ABC-123): ");
+            placa = entrada.nextLine().trim();
+            try {
+                validarPlaca(placa);
+                // Buscar si ya existe un bus con esa placa
+                bus = buscarBusPorPlaca(persistencia, placa);
+                if (bus != null) {
+                    System.out.println("✔ Bus encontrado (ID " + bus.getIdBus() + ", capacidad " + bus.getCapacidad() + ").");
+                    break;
+                } else {
+                    // Bus nuevo: capacidad fija de 40 (estándar del sistema)
+                    bus = new Bus(0, placa, 40);  // ID 0 se asignará después
+                    System.out.println("✔ Nuevo bus creado con capacidad 40.");
+                    break;
+                }
+            } catch (IllegalArgumentException e) {
+                System.out.println("✖ " + e.getMessage());
+            }
+        }
+        // Verificar que el bus no esté ocupado en ese horario
+        if (busOcupadoEnHorario(persistencia, bus.getIdBus(), fecha, hora)) {
+            System.out.println("✖ El bus " + bus.getPlaca() + " ya está ocupado en esa fecha y hora.");
             return;
         }
 
-        System.out.println("\n━━━━━━━━━━ Rutas disponibles ━━━━━━━━-");
-        Ruta[] rutas = persistencia.getRutas();
-        for (int i = 0; i < persistencia.getCantidadRutas(); i++) {
-            Ruta ruta = rutas[i];
-            System.out.println(ruta.getIdRuta() + ". " + ruta.getOrigen() + " -> " + ruta.getDestino() + " | S/ " + ruta.getPrecioBase());
-        }
-        System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        System.out.print("Ingresar numero de ruta disponible: ");
-        String textoIdRuta = entrada.nextLine().trim();
-        System.out.print("Fecha del viaje (ej. 2026-07-10): ");
-        String fecha = entrada.nextLine().trim();
-        System.out.print("Hora del viaje (ej. 08:00): ");
-        String hora = entrada.nextLine().trim();
-        System.out.print("Numero de bus: ");
-        String textoIdBus = entrada.nextLine().trim();
-        System.out.print("Placa del bus: ");
-        String placa = entrada.nextLine().trim();
-        System.out.print("Capacidad del bus (N° de pasajeros): ");
-        String textoCapacidad = entrada.nextLine().trim();
-
+        // Procedemos a crear el viaje
         try {
-            int idRuta = Validacion.validarYParsearEntero(textoIdRuta, "Numero de ruta", 1, 1_000_000);
-            Ruta rutaElegida = persistencia.buscarRutaPorId(idRuta);
-            if (rutaElegida == null) {
-                throw new IllegalArgumentException("No existe una ruta con el numero " + idRuta + ".");
-            }
-            int fila = persistencia.obtenerOCrearFilaParaDestino(rutaElegida.getDestino());
+            // Buscar fila (destino) y columna (horario) libres
+            int fila = buscarFilaDestino(persistencia, ruta.getDestino());
             if (fila == -1) {
-                throw new IllegalStateException("La matriz de destinos ya esta llena (maximo " + Persistencia.getMaxDestinos() + " destinos). No se puede agregar un destino nuevo.");
+                throw new IllegalStateException("Máximo de " + MAX_DESTINOS + " destinos alcanzado.");
             }
-            int columna = persistencia.primeraColumnaLibre(fila);
+            int columna = buscarColumnaLibre(persistencia, fila);
             if (columna == -1) {
-                throw new IllegalStateException("Ya se alcanzo el maximo de frecuencias (" + Persistencia.getMaxHorarios() + ") para el destino \"" + rutaElegida.getDestino() + "\".");
+                throw new IllegalStateException("Máximo de " + MAX_HORARIOS + " horarios para \"" + ruta.getDestino() + "\".");
             }
-            Validacion.validarTextoNoVacioOExcepcion(fecha, "Fecha");
-            Validacion.validarTextoNoVacioOExcepcion(hora, "Hora");
-            Validacion.validarTextoNoVacioOExcepcion(placa, "Placa");
-            int idBus = Validacion.validarYParsearEntero(textoIdBus, "Numero de bus", 0, 1_000_000);
-            int capacidad = Validacion.validarYParsearEntero(textoCapacidad, "Capacidad del bus", 1, 1_000_000);
-            Bus bus = new Bus(idBus, placa, capacidad);
+            //Evita que haya viajes duplicados
+            if (viajeDuplicado(persistencia, ruta.getDestino(), fecha, hora)) {
+                throw new IllegalArgumentException("Ya hay viaje a \"" + ruta.getDestino() + "\" el " + fecha + " a las " + hora + ".");
+            }
+            // Crear viaje
             Viaje viaje = new Viaje();
             viaje.setIdViaje(persistencia.siguienteIdViaje());
             viaje.setFecha(fecha);
             viaje.setHora(hora);
-            viaje.setRuta(rutaElegida);
+            viaje.setRuta(ruta);
             viaje.setBus(bus);
-            boolean agregado = persistencia.agregarViaje(fila, columna, viaje);
-            if (!agregado) {
-                throw new IllegalStateException("La posicion en la matriz de horarios ya estaba ocupada.");
+            if (!persistencia.agregarViaje(fila, columna, viaje)) {
+                throw new IllegalStateException("La posición en la matriz ya estaba ocupada.");
             }
+            // Guardar buses y viajes en XML
+            if (bus.getIdBus() == 0) {
+                int nuevoId = obtenerSiguienteIdBus(persistencia);
+                bus.setIdBus(nuevoId);
+                persistencia.guardarBus(bus);
+            } else {
+            }
+            // Guarda la matriz actualizada en XML
             persistencia.guardarViajes();
-            System.out.println("✅ Horario agregado correctamente hacia " + rutaElegida.getDestino() + " (Viaje ID " + viaje.getIdViaje() + ", " + fecha + " " + hora + ").");
-        } catch (IllegalArgumentException | IllegalStateException datosInvalidos) {
-            System.out.println("❌ " + datosInvalidos.getMessage());
-        } catch (Exception errorAlAgregarHorario) {
-            System.out.println("❌ No se pudo agregar el horario: " + errorAlAgregarHorario.getMessage());
+            System.out.println("✔ Viaje agregado (ID " + viaje.getIdViaje() + ") a " + ruta.getDestino() + " (" + fecha + " " + hora + ").");
+        } catch (Exception e) {
+            System.out.println("✖ " + e.getMessage());
         }
     }
 
+    // Busca un bus por su placa
+    private Bus buscarBusPorPlaca(Persistencia persistencia, String placa) {
+        Bus[] buses = persistencia.getBuses();
+        for (int i = 0; i < persistencia.getCantidadBuses(); i++) {
+            if (buses[i].getPlaca().equalsIgnoreCase(placa)) {
+                return buses[i];
+            }
+        }
+        return null;
+    }
+
+    // Verifica si un bus ya está ocupado en una fecha y hora determinadas.
+    private boolean busOcupadoEnHorario(Persistencia persistencia, int idBus, String fecha, String hora) {
+        Viaje[][] matriz = persistencia.getViajes();
+        for (int f = 0; f < MAX_DESTINOS; f++) {
+            for (int c = 0; c < MAX_HORARIOS; c++) {
+                Viaje v = matriz[f][c];
+                if (v != null && v.getBus() != null && v.getBus().getIdBus() == idBus
+                        && v.getFecha().equals(fecha) && v.getHora().equals(hora)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // Obtiene el siguiente ID disponible para un bus nuevo.
+    private int obtenerSiguienteIdBus(Persistencia persistencia) {
+        int max = 0;
+        Bus[] buses = persistencia.getBuses();
+        for (int i = 0; i < persistencia.getCantidadBuses(); i++) {
+            if (buses[i].getIdBus() > max) {
+                max = buses[i].getIdBus();
+            }
+        }
+        return max + 1;
+    }
+
+    //  Busca una fila existente para el destino, o la primera fila vacía.
+    private int buscarFilaDestino(Persistencia persistencia, String destino) {
+        Viaje[][] matriz = persistencia.getViajes();
+        // Buscar fila existente
+        for (int f = 0; f < MAX_DESTINOS; f++) {
+            for (int c = 0; c < MAX_HORARIOS; c++) {
+                if (matriz[f][c] != null && matriz[f][c].getRuta().getDestino().equalsIgnoreCase(destino)) {
+                    return f;
+                }
+            }
+        }
+        // Buscar primera fila vacía
+        for (int f = 0; f < MAX_DESTINOS; f++) {
+            boolean vacia = true;
+            for (int c = 0; c < MAX_HORARIOS; c++) {
+                if (matriz[f][c] != null) {
+                    vacia = false;
+                    break;
+                }
+            }
+            if (vacia) {
+                return f;
+            }
+        }
+        return -1;
+    }
+
+    // Devuelve la primera columna libre en una fila.
+    private int buscarColumnaLibre(Persistencia persistencia, int fila) {
+        Viaje[][] matriz = persistencia.getViajes();
+        for (int c = 0; c < MAX_HORARIOS; c++) {
+            if (matriz[fila][c] == null) {
+                return c;
+            }
+        }
+        return -1;
+    }
+
+    // Verifica si ya existe viaje con mismo destino, fecha y hora.
+    private boolean viajeDuplicado(Persistencia persistencia, String destino, String fecha, String hora) {
+        Viaje[][] matriz = persistencia.getViajes();
+        for (int f = 0; f < MAX_DESTINOS; f++) {
+            for (int c = 0; c < MAX_HORARIOS; c++) {
+                Viaje v = matriz[f][c];
+                if (v != null && v.getRuta().getDestino().equalsIgnoreCase(destino)
+                        && v.getFecha().equals(fecha) && v.getHora().equals(hora)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // ----------------------------- GESTIÓN DE CAJEROS -----------------------------
     /*
-    Registra un nuevo usuario con rol "cajero": pide nombre y contrasena, valida los datos y evita 
-    duplicados lanzando excepciones propias (IllegalArgumentException/IllegalStateException) que se 
-    resuelven todas en un unico catch, en lugar de usar metodos de validacion repetidos.
+     Crea un nuevo usuario con rol "cajero"
+     - Nombre: al menos 3 caracteres alfanuméricos
+     - Contraseña: mínimo 6 caracteres
+     - No permite nombres duplicados ni exceder el límite
+     - Guarda inmediatamente en el archivo XML con guardarUsuario()
      */
     public void agregarCajero(Persistencia persistencia, Scanner entrada) {
         System.out.println("\n━━━━━━━━ Registrar Nuevo Cajero ━━━━━━━━");
-        System.out.print("Nombre de usuario del cajero: ");
-        String nombre = entrada.nextLine().trim();
-        System.out.print("Contraseña del cajero: ");
-        String contrasena = entrada.nextLine().trim();
-        System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-
+        String nombre = "";
+        while (true) {
+            System.out.print("Nombre de usuario: ");
+            nombre = entrada.nextLine().trim();
+            try {
+                Validacion.validarTextoNoVacio(nombre, "Nombre");
+                if (nombre.length() < 3) {
+                    throw new IllegalArgumentException("El nombre debe tener al menos 3 caracteres.");
+                }
+                if (!nombre.matches("^[a-zA-Z0-9_]+$")) {
+                    throw new IllegalArgumentException("Solo letras, números y guión bajo.");
+                }
+                if (persistencia.buscarUsuarioPorNombre(nombre) != null) {
+                    throw new IllegalArgumentException("El usuario \"" + nombre + "\" ya existe.");
+                }
+                break;
+            } catch (IllegalArgumentException e) {
+                System.out.println("❌ " + e.getMessage());
+            }
+        }
+        String contrasena = "";
+        while (true) {
+            System.out.print("Contraseña: ");
+            contrasena = entrada.nextLine().trim();
+            try {
+                Validacion.validarContrasena(contrasena);
+                break;
+            } catch (IllegalArgumentException e) {
+                System.out.println("❌ " + e.getMessage());
+            }
+        }
         try {
-            Validacion.validarTextoNoVacioOExcepcion(nombre, "Nombre de usuario");
-            Validacion.validarTextoNoVacioOExcepcion(contrasena, "Contraseña");
-            if (persistencia.existeUsuario(nombre)) {
-                throw new IllegalArgumentException("Ya existe un usuario registrado con el nombre \"" + nombre + "\".");
-            }
-            if (persistencia.getCantidadUsuarios() >= Persistencia.getMaxUsuarios()) {
-                throw new IllegalStateException("Se alcanzo el maximo de usuarios permitidos (" + Persistencia.getMaxUsuarios() + ").");
-            }
-            int idNuevo = persistencia.siguienteIdUsuario();
-            Cajero nuevoCajero = new Cajero(idNuevo, nombre, contrasena, "cajero");
-            persistencia.guardarUsuario(nuevoCajero);
-            // Refresca el arreglo de usuarios en memoria para que el nuevo cajero pueda iniciar sesion de inmediato.
-            persistencia.cargarXML();
-            System.out.println("✅ Cajero \"" + nombre + "\" registrado correctamente (ID " + idNuevo + ").");
-        } catch (IllegalArgumentException | IllegalStateException datosInvalidos) {
-            System.out.println("❌ " + datosInvalidos.getMessage());
-        } catch (Exception errorAlGuardarCajero) {
-            System.out.println("❌ No se pudo registrar el cajero: " + errorAlGuardarCajero.getMessage());
+            int id = persistencia.siguienteIdUsuario();
+            Usuario nuevo = new Cajero(id, nombre, contrasena, "cajero");
+            persistencia.guardarUsuario(nuevo);
+            System.out.println("✔Cajero \"" + nombre + "\" registrado (ID " + id + ").");
+        } catch (Exception e) {
+            System.out.println("❌ " + e.getMessage());
         }
     }
 
+    // ----------------------------- CAMBIAR CONTRASEÑA -----------------------------
     /*
-    Permite al administrador cambiar la contrasena de cualquier usuario registrado (admin o cajero),
-    ubicandolo por su nombre de usuario. Reutiliza el mismo enfoque de try/catch con excepciones 
-    propias en lugar de metodos de validacion repetidos.
+     Cambia la contraseña de cualquier usuario
+     - Valida que el usuario exista
+     - Nueva contraseña: mínimo 6 caracteres y distinta a la actual
+     - Utiliza el método de Persistencia que actualiza XML y memoria
      */
     public void cambiarContrasenaUsuario(Persistencia persistencia, Scanner entrada) {
-        System.out.println("\n━━━━━━━━ Cambiar Contraseña de Usuario ━━━━━━━━");
-        Usuario[] usuarios = persistencia.getUsuarios();
-        for (int i = 0; i < persistencia.getCantidadUsuarios(); i++) {
-            System.out.println(usuarios[i].getId() + ". " + usuarios[i].getNombre() + " (" + usuarios[i].getRol() + ")");
-        }
-        System.out.print("Nombre de usuario a modificar: ");
-        String nombre = entrada.nextLine().trim();
-        System.out.print("Nueva contraseña: ");
-        String nuevaContrasena = entrada.nextLine().trim();
-        System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-
-        try {
-            Validacion.validarTextoNoVacioOExcepcion(nuevaContrasena, "Nueva contraseña");
-            if (persistencia.buscarUsuarioPorNombre(nombre) == null) {
-                throw new IllegalArgumentException("No existe un usuario registrado con el nombre \"" + nombre + "\".");
+        System.out.println("\n━━━━━━━━ Cambiar Contraseña ━━━━━━━━");
+        mostrarUsuarios(persistencia);
+        System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        String nombre = "";
+        Usuario usuario = null;
+        while (true) {
+            System.out.print("Nombre de usuario: ");
+            nombre = entrada.nextLine().trim();
+            try {
+                Validacion.validarTextoNoVacio(nombre, "Nombre");
+                usuario = persistencia.buscarUsuarioPorNombre(nombre);
+                if (usuario == null) {
+                    throw new IllegalArgumentException("No existe \"" + nombre + "\".");
+                }
+                break;
+            } catch (IllegalArgumentException nombreErroneo) {
+                System.out.println("✖ " + nombreErroneo.getMessage());
             }
-            persistencia.cambiarContrasenaUsuario(nombre, nuevaContrasena);
-            System.out.println("✅ Contraseña de \"" + nombre + "\" actualizada correctamente.");
-        } catch (IllegalArgumentException datosInvalidos) {
-            System.out.println("❌ " + datosInvalidos.getMessage());
-        } catch (Exception errorAlCambiarContrasena) {
-            System.out.println("❌ No se pudo cambiar la contraseña: " + errorAlCambiarContrasena.getMessage());
+        }
+        String nueva = "";
+        while (true) {
+            System.out.print("Nueva contraseña: ");
+            nueva = entrada.nextLine().trim();
+            try {
+                Validacion.validarContrasena(nueva);
+                if (nueva.equals(usuario.getContrasena())) {
+                    throw new IllegalArgumentException("La nueva contraseña debe ser diferente a la actual.");
+                }
+                break;
+            } catch (IllegalArgumentException e) {
+                System.out.println("✖ " + e.getMessage());
+            }
+        }
+        try {
+            persistencia.cambiarContrasenaUsuario(nombre, nueva);
+            System.out.println("✔ Contraseña de \"" + nombre + "\" actualizada.");
+        } catch (Exception e) {
+            System.out.println("✖ " + e.getMessage());
         }
     }
 
+    // Muestra lista de usuarios (solo para referencia).
+    private void mostrarUsuarios(Persistencia persistencia) {
+        Usuario[] usuarios = persistencia.getUsuarios();
+        for (int i = 0; i < persistencia.getCantidadUsuarios(); i++) {
+            Usuario u = usuarios[i];
+            System.out.println(u.getId() + ". " + u.getNombre() + " (" + u.getRol() + ")");
+        }
+    }
+
+    // ------------------------ VALIDACIONES PRIVADAS ------------------------
+    // Valida que la fecha tenga formato YYYY-MM-DD y sea razonable
+    private void validarFecha(String fecha) {
+        if (!fecha.matches("^\\d{4}-\\d{2}-\\d{2}$")) {
+            throw new IllegalArgumentException("Formato YYYY-MM-DD.");
+        }
+        String[] p = fecha.split("-");
+        int año = Integer.parseInt(p[0]);
+        int mes = Integer.parseInt(p[1]);
+        int dia = Integer.parseInt(p[2]);
+        if (mes < 1 || mes > 12 || dia < 1 || dia > 31 || año < 2000) {
+            throw new IllegalArgumentException("Fecha inválida (año≥2000, mes 1-12, día 1-31).");
+        }
+    }
+
+    // Valida que la placa tenga formato: 3 letras + 3 números (con o sin guión)
+    private void validarPlaca(String placa) {
+        if (!placa.matches("^[A-Za-z]{3}-?\\d{3}$")) {
+            throw new IllegalArgumentException("Formato: 3 letras + 3 números (ej. ABC-123).");
+        }
+    }
 }

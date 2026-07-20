@@ -1,8 +1,10 @@
 package transporte;
 
+import datos.Validacion;
+
 /*
-Representa un viaje específico con una ruta y bus asignados.
- @author Julian
+Representa un viaje programado con ruta, bus, fecha y hora.
+@author Julian
  */
 public class Viaje {
 
@@ -12,111 +14,56 @@ public class Viaje {
     private Ruta ruta;
     private Bus bus;
 
-    public Viaje() {
-    }
+    public Viaje() { }
 
     public Viaje(String fecha, String hora, Ruta ruta, Bus bus) {
-        if (fecha == null || fecha.trim().isEmpty()) {
-            throw new IllegalArgumentException("Fecha no puede estar vacía.");
-        }
-        if (hora == null || hora.trim().isEmpty()) {
-            throw new IllegalArgumentException("Hora no puede estar vacía.");
-        }
-        if (ruta == null) {
-            throw new IllegalArgumentException("Ruta no puede ser nula.");
-        }
-        if (bus == null) {
-            throw new IllegalArgumentException("Bus no puede ser nulo.");
-        }
-        this.fecha = fecha.trim();
-        this.hora = hora.trim();
-        this.ruta = ruta;
-        this.bus = bus;
+        setFecha(fecha);
+        setHora(hora);
+        setRuta(ruta);
+        setBus(bus);
     }
 
-    public int getIdViaje() {
-        return idViaje;
-    }
+    public int getIdViaje() { return idViaje; }
+    public void setIdViaje(int idViaje) { this.idViaje = idViaje; }
 
-    public void setIdViaje(int idViaje) {
-        this.idViaje = idViaje;
-    }
-
-    public String getFecha() {
-        return fecha;
-    }
-
+    public String getFecha() { return fecha; }
     public void setFecha(String fecha) {
-        if (fecha == null || fecha.trim().isEmpty()) {
-            throw new IllegalArgumentException("Fecha no puede estar vacía.");
-        }
+        Validacion.validarTextoNoVacio(fecha, "Fecha");
         this.fecha = fecha.trim();
     }
 
-    public String getHora() {
-        return hora;
-    }
-
+    public String getHora() { return hora; }
     public void setHora(String hora) {
-        if (hora == null || hora.trim().isEmpty()) {
-            throw new IllegalArgumentException("Hora no puede estar vacía.");
-        }
+        Validacion.validarHora(hora);
         this.hora = hora.trim();
     }
 
-    public Ruta getRuta() {
-        return ruta;
-    }
-
+    public Ruta getRuta() { return ruta; }
     public void setRuta(Ruta ruta) {
-        if (ruta == null) {
-            throw new IllegalArgumentException("Ruta no puede ser nula.");
-        }
+        if (ruta == null) throw new IllegalArgumentException("Ruta no puede ser nula.");
         this.ruta = ruta;
     }
 
-    public Bus getBus() {
-        return bus;
-    }
-
+    public Bus getBus() { return bus; }
     public void setBus(Bus bus) {
-        if (bus == null) {
-            throw new IllegalArgumentException("Bus no puede ser nulo.");
-        }
+        if (bus == null) throw new IllegalArgumentException("Bus no puede ser nulo.");
         this.bus = bus;
     }
 
-    //Calcula el porcentaje de ocupación del bus en este viaje.
     public double calcularOcupacion() {
-        if (bus == null) {
-            throw new IllegalStateException("Bus no asignado al viaje.");
-        }
-
-        int capacidadTotal = bus.getCapacidad();
-        int asientosOcupados = bus.contarAsientosOcupados();
-
-        if (capacidadTotal == 0) {
-            return 0;
-        }
-
-        return (asientosOcupados * 100.0) / capacidadTotal;
+        if (bus == null) return 0;
+        int capacidad = bus.getCapacidad();
+        if (capacidad == 0) return 0;
+        return (bus.contarAsientosOcupados() * 100.0) / capacidad;
     }
-    
-    // Verifica si hay asientos disponibles en el bus para este viaje.
+
     public boolean tieneAsientosDisponibles() {
-        if (bus == null) {
-            return false;
-        }
-        return bus.contarAsientosOcupados() < bus.getCapacidad();
+        return bus != null && bus.contarAsientosOcupados() < bus.getCapacidad();
     }
 
     @Override
     public String toString() {
         return String.format("Viaje #%d | %s %s | %s | Bus: %s",
-                idViaje,
-                fecha != null ? fecha : "N/D",
-                hora != null ? hora : "N/D",
-                ruta != null ? ruta.toString() : "N/D",
-                bus != null ? bus.getPlaca() : "N/D");
+                idViaje, fecha, hora, ruta != null ? ruta.toString() : "N/D", bus != null ? bus.getPlaca() : "N/D");
     }
 }

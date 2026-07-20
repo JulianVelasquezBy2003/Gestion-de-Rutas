@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<buses>
+    <bus id="1">
+        <placa>ABC-123</placa>
+        <capacidad>40</capacidad>
+        <asientos>
+            <fila index="0">OOOOOOOOOO</fila>
+            <fila index="1">OOOOOOOOOO</fila>
+            <fila index="2">OOOOOOOOOO</fila>
+            <fila index="3">OOOOOOOOOO</fila>
+        </asientos>
+    </bus>
+    <bus id="2">
+        <placa>XYZ-789</placa>
+        <capacidad>40</capacidad>
+        <asientos>
+            <fila index="0">OXOOOOOOOO</fila>
+            <fila index="1">OOOOOOOOOO</fila>
+            <fila index="2">OOOOOOOOOO</fila>
+            <fila index="3">OOOOOOOOOO</fila>
+        </asientos>
+    </bus>
+    <bus id="5">
+        <placa>ADC-342</placa>
+        <capacidad>40</capacidad>
+        <asientos>
+            <fila index="0">OOOOOOOOOO</fila>
+            <fila index="1">OOOOOOOOOO</fila>
+            <fila index="2">OOOOOOOOOO</fila>
+            <fila index="3">OOOOOOOOOO</fila>
+        </asientos>
+    </bus>
+    <bus id="6">
+        <placa>ADS-234</placa>
+        <capacidad>40</capacidad>
+        <asientos>
+            <fila index="0">OOOOOOOOOO</fila>
+            <fila index="1">OOOOOOOOOO</fila>
+            <fila index="2">OOOOOOOOOO</fila>
+            <fila index="3">OOOOOOOOOO</fila>
+        </asientos>
+    </bus>
+</buses>

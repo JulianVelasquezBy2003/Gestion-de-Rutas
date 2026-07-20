@@ -3,180 +3,152 @@ package datos;
 import transporte.Bus;
 
 /*
-Clase de utilidad con métodos estáticos de validación reutilizables. Diseñada para simplificar 
-el código en clases como Cajero, Reporte, Administrador.
-Todos los métodos lanzan IllegalArgumentException o IllegalStateException para los casos de validación fallida.
+Utilidades de validación y parseo para entrada de usuario.
+Todos los métodos lanzan IllegalArgumentException si el dato no es válido.
 @author Julian
  */
-public class Validacion {
+public final class Validacion {
 
-    // Constructor privado para evitar instanciación
     private Validacion() {
-        throw new AssertionError("No se puede instanciar Validacion.");
+        throw new AssertionError("No instanciar");
     }
 
-    // DNI 
-    public static boolean validarDni(String dni) {
-        if (dni == null) {
-            return false;
+    // --------------------------- VALIDACIONES BÁSICAS ---------------------------------
+    // Valida que un texto no sea nulo ni vacío (tras recortar espacios)
+    public static void validarTextoNoVacio(String texto, String nombreCampo) {
+        if (texto == null || texto.trim().isEmpty()) {
+            throw new IllegalArgumentException("El campo '" + nombreCampo + "' no puede estar vacío.");
         }
-        String limpio = dni.trim();
-        return limpio.length() == 8 && limpio.chars().allMatch(Character::isDigit);
+    }
+    // Devuelve true si el texto no es nulo ni vacío
+    public static boolean esTextoNoVacio(String texto) {
+        return texto != null && !texto.trim().isEmpty();
     }
 
-    public static void validarDniOExcepcion(String dni) {
-        if (!validarDni(dni)) {
+    // --------------------------- NÚMEROS ---------------------------
+    // Convierte un texto a entero y valida que esté en [min, max].
+    public static int parsearEntero(String texto, String nombreCampo, int min, int max) {
+        validarTextoNoVacio(texto, nombreCampo);
+        try {
+            int valor = Integer.parseInt(texto.trim());
+            if (valor < min || valor > max) {
+                throw new IllegalArgumentException(
+                        String.format("%s debe estar entre %d y %d (ingresaste: %d).",
+                                nombreCampo, min, max, valor)
+                );
+            }
+            return valor;
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    String.format("%s debe ser un número entero. Ingresaste: '%s'.",
+                            nombreCampo, texto)
+            );
+        }
+    }
+
+    // Convierte un texto a double y valida que esté en [min, max].
+    public static double parsearDecimal(String texto, String nombreCampo, double min, double max) {
+        validarTextoNoVacio(texto, nombreCampo);
+        try {
+            double valor = Double.parseDouble(texto.trim());
+            if (valor < min || valor > max) {
+                throw new IllegalArgumentException(
+                        String.format("%s debe estar entre %.2f y %.2f (ingresaste: %.2f).", nombreCampo, min, max, valor)
+                );
+            }
+            return valor;
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    String.format("%s debe ser un número decimal. Ingresaste: '%s'.", nombreCampo, texto)
+            );
+        }
+    }
+
+    // --------------------------- VALIDACIONES ESPECÍFICAS ---------------------------
+    // DNI: exactamente 8 dígitos numéricos
+    public static void validarDni(String dni) {
+        if (dni == null || !dni.trim().matches("\\d{8}")) {
             throw new IllegalArgumentException("El DNI debe tener exactamente 8 dígitos numéricos.");
         }
     }
 
-    // TELÉFONO
-    public static boolean validarTelefono(String telefono) {
-        if (telefono == null) {
-            return false;
-        }
-        String limpio = telefono.trim();
-        return limpio.length() == 9 && limpio.chars().allMatch(Character::isDigit);
-    }
-
-    public static void validarTelefonoOExcepcion(String telefono) {
-        if (!validarTelefono(telefono)) {
+    // Teléfono: exactamente 9 dígitos numéricos
+    public static void validarTelefono(String telefono) {
+        if (telefono == null || !telefono.trim().matches("\\d{9}")) {
             throw new IllegalArgumentException("El teléfono debe tener exactamente 9 dígitos numéricos.");
         }
     }
 
-    // EMAIL
-    public static boolean validarEmail(String email) {
-        if (email == null) {
-            return false;
-        }
-        String limpio = email.trim();
-        return limpio.matches("^[A-Za-z0-9+_.-]+@(.+)$");
-    }
-
-    public static void validarEmailOExcepcion(String email) {
-        if (!validarEmail(email)) {
+    // Email: formato básico (usuario@dominio)
+    public static void validarEmail(String email) {
+        if (email == null || !email.trim().matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
             throw new IllegalArgumentException("El email no tiene un formato válido.");
         }
     }
 
-    // TEXTO
-    public static boolean textoNoVacio(String texto) {
-        return texto != null && !texto.trim().isEmpty();
-    }
-
-    public static void validarTextoNoVacioOExcepcion(String texto, String nombreCampo) {
-        if (!textoNoVacio(texto)) {
-            throw new IllegalArgumentException("El campo '" + nombreCampo + "' no puede estar vacío.");
+    // Contraseña: al menos 6 caracteres no vacíos
+    public static void validarContrasena(String contrasena) {
+        if (contrasena == null || contrasena.trim().isEmpty()) {
+            throw new IllegalArgumentException("La contraseña no puede estar vacía.");
+        }
+        if (contrasena.length() < 6) {
+            throw new IllegalArgumentException("La contraseña debe tener al menos 6 caracteres.");
         }
     }
 
-    // ENTEROS 
-    public static int validarYParsearEntero(String texto, String nombreCampo, int min, int max) {
-        validarTextoNoVacioOExcepcion(texto, nombreCampo);
-        try {
-            int val = Integer.parseInt(texto.trim());
-            if (val < min || val > max) {
-                throw new IllegalArgumentException(
-                        String.format("%s debe estar entre %d y %d (ingresaste: %d).",
-                                nombreCampo, min, max, val)
-                );
-            }
-            return val;
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(
-                    String.format("%s debe ser un número entero válido. Ingresaste: '%s'.",
-                            nombreCampo, texto)
-            );
-        }
+    // Edad: entero entre 0 y 120.
+    public static int parsearEdad(String textoEdad) {
+        return parsearEntero(textoEdad, "Edad", 0, 120);
     }
 
-    // DECIMALES
-    public static double validarYParsearDecimal(String texto, String nombreCampo, double min, double max) {
-        validarTextoNoVacioOExcepcion(texto, nombreCampo);
-        try {
-            double val = Double.parseDouble(texto.trim());
-            if (val < min || val > max) {
-                throw new IllegalArgumentException(
-                        String.format("%s debe estar entre %.2f y %.2f (ingresaste: %.2f).",
-                                nombreCampo, min, max, val)
-                );
-            }
-            return val;
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(
-                    String.format("%s debe ser un número decimal válido. Ingresaste: '%s'.",
-                            nombreCampo, texto)
-            );
-        }
+    // Capacidad: entero positivo (mínimo 1)
+    public static int parsearCapacidad(String texto, String nombreCampo) {
+        return parsearEntero(texto, nombreCampo, 1, Integer.MAX_VALUE);
     }
 
-    // EDAD
-    public static int validarYParsearEdad(String textoEdad) {
-        return validarYParsearEntero(textoEdad, "Edad", 0, 120);
-    }
-
-    // CAPACIDAD
-    public static int validarCapacidad(String texto, String nombreCampo) {
-        return validarYParsearEntero(texto, nombreCampo, 1, Integer.MAX_VALUE);
-    }
-
-    // HORA
-    public static boolean validarHora(String hora) {
-        if (hora == null) {
-            return false;
-        }
-        return hora.trim().matches("^([01]?[0-9]|2[0-3]):[0-5][0-9]$");
-    }
-
-    public static void validarHoraOExcepcion(String hora) {
-        if (!validarHora(hora)) {
+    // Hora en formato HH:MM (24h)
+    public static void validarHora(String hora) {
+        if (hora == null || !hora.trim().matches("^([01]?[0-9]|2[0-3]):[0-5][0-9]$")) {
             throw new IllegalArgumentException("La hora debe estar en formato HH:MM (ej. 14:30).");
         }
     }
 
-    // FECHA
-    public static boolean validarFecha(String fecha) {
-        if (fecha == null) {
-            return false;
-        }
-        return fecha.trim().matches("^(0?[1-9]|[12][0-9]|3[01])/(0?[1-9]|1[0-2])/\\d{4}$");
-    }
-
-    public static void validarFechaOExcepcion(String fecha) {
-        if (!validarFecha(fecha)) {
+    // Fecha en formato DD/MM/YYYY
+    public static void validarFecha(String fecha) {
+        if (fecha == null || !fecha.trim().matches("^(0?[1-9]|[12][0-9]|3[01])/(0?[1-9]|1[0-2])/\\d{4}$")) {
             throw new IllegalArgumentException("La fecha debe estar en formato DD/MM/YYYY.");
         }
     }
 
-    // ASIENTOS
-    public static int validarYParsearFila(String textoFila, int maxRows) {
-        if (textoFila == null || textoFila.trim().isEmpty()) {
-            throw new IllegalArgumentException("La fila no puede estar vacía.");
-        }
-        String t = textoFila.trim().toUpperCase();
-        if (t.length() != 1 || !Character.isLetter(t.charAt(0))) {
+    // --------------------------- ASIENTOS (para bus) ---------------------------
+    //  Convierte una letra (A, B, C...) a índice de fila (0, 1, 2...).
+    public static int parsearFila(String textoFila, int maxRows) {
+        validarTextoNoVacio(textoFila, "Fila");
+        String letra = textoFila.trim().toUpperCase();
+        if (letra.length() != 1 || !Character.isLetter(letra.charAt(0))) {
             throw new IllegalArgumentException("La fila debe ser una sola letra (ej. A, B, C...).");
         }
-        int fila = t.charAt(0) - 'A';
+        int fila = letra.charAt(0) - 'A';
         if (fila < 0 || fila >= maxRows) {
-            throw new IllegalArgumentException("La fila está fuera del rango válido (máximo: "
-                    + ((char) ('A' + maxRows - 1)) + ").");
+            char maxLetra = (char) ('A' + maxRows - 1);
+            throw new IllegalArgumentException("La fila está fuera del rango (máximo: " + maxLetra + ").");
         }
         return fila;
     }
 
-    public static int validarYParsearColumna(String textoColumna, int maxCols) {
-        int col1based = validarYParsearEntero(textoColumna, "Número de asiento", 1, maxCols);
-        return col1based - 1;
+    // Convierte un número de asiento (1-based) a índice de columna (0-based).
+    public static int parsearColumna(String textoColumna, int maxCols) {
+        int columna1 = parsearEntero(textoColumna, "Número de asiento", 1, maxCols);
+        return columna1 - 1;
     }
 
-    public static void validarAsientoConBus(Bus bus, int fila, int columna) {
+    //  Valida que la posición (fila, columna) exista y esté libre en el bus.
+    public static void validarAsientoEnBus(Bus bus, int fila, int columna) {
         if (bus == null) {
-            throw new IllegalArgumentException("Bus no asignado para el viaje.");
+            throw new IllegalArgumentException("El bus no está asignado al viaje.");
         }
         if (!bus.posicionValida(fila, columna)) {
-            throw new IllegalArgumentException("Esa posición no existe en el mapa de asientos de este bus.");
+            throw new IllegalArgumentException("Esa posición no existe en el mapa de asientos.");
         }
         if (!bus.asientoLibre(fila, columna)) {
             throw new IllegalStateException("Ese asiento ya está ocupado. Elija otro.");

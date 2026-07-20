@@ -4,13 +4,13 @@ import java.io.File;
 import java.util.Arrays;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import modelo.Usuario;
@@ -21,351 +21,406 @@ import transporte.Venta;
 import transporte.Viaje;
 
 /*
- Gestiona la persistencia de datos del sistema en archivos XML.
- - Cargar datos desde XML al iniciar (usuarios, rutas, viajes, ventas)
- - Guardar cambios realizados durante la sesión
- - Mantener arreglos en memoria con límites de tamaño fijo
- - Reconstruir relaciones entre entidades (viajes con rutas, ventas con viajes)
-
-Estructura de datos:
- - Usuario[]: arreglo plano (1D) con máximo 100 usuarios
- - Ruta[]: arreglo plano (1D) con máximo 50 rutas
- - Viaje[][]: matriz 2D (destinos x horarios) de 10x5
- - Venta[]: arreglo plano (1D) con máximo 500 ventas
- @author Julian, Angela
+Esta clase se encarga de guardar y recuperar toda la información del sistema
+usando archivos XML. Es el "archivo" donde se almacenan usuarios, rutas, viajes, buses y ventas.
+@author Julian, Angela, Yulisa
  */
 public class Persistencia {
-    //Ruta de archivos XML
+
+    // Carpeta donde se guardan los archivos XML
     private static final String CARPETA_XML = "src/main/resources/xml/";
-    
-    // Límites de tamaño para arreglos de tamaño fijo
+
+    // Cantidad máxima de usuarios que podemos tener.
     private static final int MAX_USUARIOS = 100;
+    //Cantidad máxima de rutas
     private static final int MAX_RUTAS = 50;
-    private static final int MAX_DESTINOS = 10;      // Filas de la matriz de viajes
-    private static final int MAX_HORARIOS = 5;       // Columnas de la matriz de viajes
+    // Cantidad máxima de buses
+    private static final int MAX_BUSES = 20;
+    // Número máximo de destinos diferentes (filas de la matriz de viajes)
+    private static final int MAX_DESTINOS = 10;
+    // Número máximo de horarios por destino (columnas de la matriz)
+    private static final int MAX_HORARIOS = 5;
+    // Cantidad máxima de ventas que podemos guardar
     private static final int MAX_VENTAS = 500;
 
-    // Almacena todos los usuarios del sistema 
+    // Lista de todos los usuarios registrados
     private Usuario[] usuarios = new Usuario[MAX_USUARIOS];
     private int cantidadUsuarios = 0;
 
-    // Almacena todas las rutas disponibles 
+    // Lista de todas las rutas disponibles
     private Ruta[] rutas = new Ruta[MAX_RUTAS];
     private int cantidadRutas = 0;
 
+    // Lista de todos los buses (cada bus tiene su mapa de asientos)
+    private Bus[] buses = new Bus[MAX_BUSES];
+    private int cantidadBuses = 0;
+
     /*
-     Matriz de viajes: filas representan destinos, columnas representan franjas horarias.
-     Estructura: viajes[destino][horario] = Viaje
+    Matriz de viajes: cada fila es un destino y cada columna es un horario.
+    Si una celda está vacía (null), significa que no hay viaje en ese horario.
      */
     private Viaje[][] viajes = new Viaje[MAX_DESTINOS][MAX_HORARIOS];
 
-    // Almacena el historial de ventas de la sesión
+    // Historial de todas las ventas realizadas
     private Venta[] ventas = new Venta[MAX_VENTAS];
     private int cantidadVentas = 0;
 
-    // Obtiene la ruta de un archivo XML desde la carpeta de recursos.
-    private File archivoXml(String nombreArchivo) {
-        return new File(CARPETA_XML + nombreArchivo);
+    //----------------- MÉTODOS PARA MANEJO DE LOS XML ----------------
+    // Devuelve el archivo XML con el nombre indicado
+    private File archivoXml(String nombre) {
+        return new File(CARPETA_XML + nombre);
+    }
+    // Crea un "lector" de XML
+    private DocumentBuilder crearParser() throws Exception {
+        return DocumentBuilderFactory.newInstance().newDocumentBuilder();
+    }
+    // Guarda un documento XML en disco con formato bonito (indentado)
+    private void guardarDocumento(Document doc, String nombre) throws Exception {
+        Transformer t = TransformerFactory.newInstance().newTransformer();
+        t.setOutputProperty(OutputKeys.INDENT, "yes");
+        t.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
+        t.transform(new DOMSource(doc), new StreamResult(new File(CARPETA_XML + nombre)));
     }
 
-    // Crea un parser XML (DocumentBuilder) para leer/escribir documentos XML.
-    private DocumentBuilder crearParserXml() throws Exception {
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        return factory.newDocumentBuilder();
+    // -------------------------- CARGAR TODO AL INICIAR ---------------------
+    /// Lee todos los archivos XML y los carga en memoria
+    public void cargarTodos() throws Exception {
+        cargarUsuarios();
+        cargarRutas();
+        cargarBuses();      // Primero los buses
+        cargarViajes();     // Luego los viajes (necesitan buses)
+        cargarVentas();     // Finalmente las ventas (necesitan viajes)
     }
 
-    // Escribe un documento XML a disco con indentación automática.
-    private void escribirDocumento(Document documento, String rutaArchivo) throws Exception {
-        TransformerFactory transformerFactory = TransformerFactory.newInstance();
-        Transformer transformer = transformerFactory.newTransformer();
-        transformer.setOutputProperty(javax.xml.transform.OutputKeys.INDENT, "yes");
-        transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
-        DOMSource source = new DOMSource(documento);
-        StreamResult result = new StreamResult(new File(rutaArchivo));
-        transformer.transform(source, result);
-    }
-
-    /*
-     Limpia recursivamente los nodos de texto que solo contienen espacios/saltos de línea.
-     Evita que se duplique la indentación al reescribir archivos XML existentes.
-     */
-    private void limpiarEspaciosEnBlanco(Node nodo) {
-        NodeList hijos = nodo.getChildNodes();
-        for (int i = hijos.getLength() - 1; i >= 0; i--) {
-            Node hijo = hijos.item(i);
-            if (hijo.getNodeType() == Node.TEXT_NODE && hijo.getTextContent().trim().isEmpty()) {
-                nodo.removeChild(hijo);
-            } else if (hijo.getNodeType() == Node.ELEMENT_NODE) {
-                limpiarEspaciosEnBlanco(hijo);
-            }
-        }
-    }
-
-    // USUARIOS
-    // Carga todos los usuarios desde usuarios.xml en memoria.
-    public void cargarXML() throws Exception {
-        DocumentBuilder builder = crearParserXml();
-        Document documento = builder.parse(archivoXml("usuarios.xml"));
-        documento.getDocumentElement().normalize();
-        NodeList listaUsuarios = documento.getElementsByTagName("usuario");
+    //--------------------------------  USUARIOS --------------------------------
+    private void cargarUsuarios() throws Exception {
+        Document doc = crearParser().parse(archivoXml("usuarios.xml"));
+        doc.getDocumentElement().normalize();
+        NodeList lista = doc.getElementsByTagName("usuario");
         cantidadUsuarios = 0;
-        for (int i = 0; i < listaUsuarios.getLength() && cantidadUsuarios < MAX_USUARIOS; i++) {
-            Element usuarioEl = (Element) listaUsuarios.item(i);
-            // Extrae atributos e hijos del elemento usuario
-            int id = Integer.parseInt(usuarioEl.getAttribute("id"));
-            String nombre = usuarioEl.getElementsByTagName("nombre").item(0).getTextContent();
-            String contrasena = usuarioEl.getElementsByTagName("contrasena").item(0).getTextContent();
-            String rol = usuarioEl.getAttribute("rol");
-            usuarios[cantidadUsuarios] = new Usuario(id, nombre, contrasena, rol);
-            cantidadUsuarios++;
+        for (int i = 0; i < lista.getLength() && cantidadUsuarios < MAX_USUARIOS; i++) {
+            Element el = (Element) lista.item(i);
+            int id = Integer.parseInt(el.getAttribute("id"));
+            String nombre = el.getElementsByTagName("nombre").item(0).getTextContent();
+            String pass = el.getElementsByTagName("contrasena").item(0).getTextContent();
+            String rol = el.getAttribute("rol");
+            usuarios[cantidadUsuarios++] = new Usuario(id, nombre, pass, rol);
         }
     }
-
-    public Usuario[] getUsuarios() {
-        return usuarios;
+    public Usuario[] getUsuarios() { 
+        return usuarios; 
     }
-
-    public int getCantidadUsuarios() {
-        return cantidadUsuarios;
+    public int getCantidadUsuarios() { 
+        return cantidadUsuarios; 
     }
-
-    public static int getMaxUsuarios() {
-        return MAX_USUARIOS;
-    }
-
-    // Busca un usuario por su nombre (sin distinguir mayúsculas/minúsculas).
     public Usuario buscarUsuarioPorNombre(String nombre) {
         for (int i = 0; i < cantidadUsuarios; i++) {
-            if (usuarios[i].getNombre().equalsIgnoreCase(nombre)) {
-                return usuarios[i];
-            }
+            if (usuarios[i].getNombre().equalsIgnoreCase(nombre)) return usuarios[i];
         }
         return null;
     }
-
-    // Verifica si un usuario con ese nombre ya existe en el sistema.
-    public boolean existeUsuario(String nombre) {
-        return buscarUsuarioPorNombre(nombre) != null;
-    }
-
-    /* 
-    Calcula el siguiente ID disponible para un nuevo usuario.
-    Recorre todos los usuarios cargados y retorna maxId + 1.
-     */
     public int siguienteIdUsuario() {
-        int maxId = 0;
+        int max = 0;
         for (int i = 0; i < cantidadUsuarios; i++) {
-            if (usuarios[i].getId() > maxId) {
-                maxId = usuarios[i].getId();
-            }
+            if (usuarios[i].getId() > max) max = usuarios[i].getId();
         }
-        return maxId + 1;
+        return max + 1;
     }
 
-    /*
-     Guarda un nuevo usuario en usuarios.xml y en memoria.
-     Se agrega al final del archivo, manteniendo el formato XML existente.
-     */
+    // Guarda un nuevo usuario (se añade al final del archivo)
     public void guardarUsuario(Usuario usuario) throws Exception {
-        if (cantidadUsuarios >= MAX_USUARIOS) {
-            throw new IllegalStateException("Se alcanzó el máximo de usuarios permitidos (" + MAX_USUARIOS + ").");
-        }
-        DocumentBuilder builder = crearParserXml();
-        Document documento = builder.parse(archivoXml("usuarios.xml"));
-        documento.getDocumentElement().normalize();
-        limpiarEspaciosEnBlanco(documento.getDocumentElement());
-        Element usuariosEl = (Element) documento.getElementsByTagName("usuarios").item(0);
-        Element nuevoUsuario = documento.createElement("usuario");
-        nuevoUsuario.setAttribute("id", String.valueOf(usuario.getId()));
-        nuevoUsuario.setAttribute("rol", usuario.getRol());
-        Element nombre = documento.createElement("nombre");
-        nombre.setTextContent(usuario.getNombre());
-        Element contrasena = documento.createElement("contrasena");
-        contrasena.setTextContent(usuario.getContrasena());
-        nuevoUsuario.appendChild(nombre);
-        nuevoUsuario.appendChild(contrasena);
-        usuariosEl.appendChild(nuevoUsuario);
-        escribirDocumento(documento, CARPETA_XML + "usuarios.xml");
-        // También agregar en memoria para que sea inmediato
-        usuarios[cantidadUsuarios] = usuario;
-        cantidadUsuarios++;
+        if (cantidadUsuarios >= MAX_USUARIOS)
+            throw new IllegalStateException("Demasiados usuarios (máximo " + MAX_USUARIOS + ").");
+        Document doc = crearParser().parse(archivoXml("usuarios.xml"));
+        doc.getDocumentElement().normalize();
+        Element raiz = (Element) doc.getElementsByTagName("usuarios").item(0);
+        Element nuevo = doc.createElement("usuario");
+        nuevo.setAttribute("id", String.valueOf(usuario.getId()));
+        nuevo.setAttribute("rol", usuario.getRol());
+        Element nom = doc.createElement("nombre");
+        nom.setTextContent(usuario.getNombre());
+        Element pass = doc.createElement("contrasena");
+        pass.setTextContent(usuario.getContrasena());
+        nuevo.appendChild(nom);
+        nuevo.appendChild(pass);
+        raiz.appendChild(nuevo);
+        guardarDocumento(doc, "usuarios.xml");
+        // También lo guardamos en memoria
+        usuarios[cantidadUsuarios++] = usuario;
     }
 
-    /*
-     Cambia la contraseña de un usuario existente.
-     Actualiza tanto el archivo XML como la referencia en memoria.
-     */
-    public void cambiarContrasenaUsuario(String nombre, String nuevaContrasena) throws Exception {
-        DocumentBuilder builder = crearParserXml();
-        Document documento = builder.parse(archivoXml("usuarios.xml"));
-        documento.getDocumentElement().normalize();
-        limpiarEspaciosEnBlanco(documento.getDocumentElement());
-        NodeList listaUsuarios = documento.getElementsByTagName("usuario");
-        boolean actualizado = false;
-        for (int i = 0; i < listaUsuarios.getLength() && !actualizado; i++) {
-            Element usuarioEl = (Element) listaUsuarios.item(i);
-            String nombreXml = usuarioEl.getElementsByTagName("nombre").item(0).getTextContent();
-            if (nombreXml.equalsIgnoreCase(nombre)) {
-                usuarioEl.getElementsByTagName("contrasena").item(0).setTextContent(nuevaContrasena);
-                actualizado = true;
+    // Cambia la contraseña de un usuario
+    public void cambiarContrasenaUsuario(String nombre, String nueva) throws Exception {
+        Document doc = crearParser().parse(archivoXml("usuarios.xml"));
+        doc.getDocumentElement().normalize();
+        NodeList lista = doc.getElementsByTagName("usuario");
+        boolean encontrado = false;
+        for (int i = 0; i < lista.getLength() && !encontrado; i++) {
+            Element el = (Element) lista.item(i);
+            String nom = el.getElementsByTagName("nombre").item(0).getTextContent();
+            if (nom.equalsIgnoreCase(nombre)) {
+                el.getElementsByTagName("contrasena").item(0).setTextContent(nueva);
+                encontrado = true;
             }
         }
-        if (!actualizado) {
-            throw new IllegalArgumentException("No existe un usuario registrado con el nombre \"" + nombre + "\".");
-        }
-        escribirDocumento(documento, CARPETA_XML + "usuarios.xml");
-        // Actualizar también en memoria
-        Usuario usuarioEnMemoria = buscarUsuarioPorNombre(nombre);
-        if (usuarioEnMemoria != null) {
-            usuarioEnMemoria.setContrasena(nuevaContrasena);
-        }
+        if (!encontrado) throw new IllegalArgumentException("Usuario '" + nombre + "' no existe.");
+        guardarDocumento(doc, "usuarios.xml");
+        // Actualizar en memoria
+        Usuario u = buscarUsuarioPorNombre(nombre);
+        if (u != null) u.setContrasena(nueva);
     }
 
-    // RUTAS
-    /*
-     Carga todas las rutas desde rutas.xml en memoria.
-     Es recomendable cargar rutas antes de cargar viajes (para poder enlazarlas).
-     */
-    public void cargarRutas() throws Exception {
-        DocumentBuilder builder = crearParserXml();
-        Document documento = builder.parse(archivoXml("rutas.xml"));
-        documento.getDocumentElement().normalize();
-        NodeList listaRutas = documento.getElementsByTagName("ruta");
+    // ---------------------------- RUTAS ----------------------------
+
+    private void cargarRutas() throws Exception {
+        Document doc = crearParser().parse(archivoXml("rutas.xml"));
+        doc.getDocumentElement().normalize();
+        NodeList lista = doc.getElementsByTagName("ruta");
         cantidadRutas = 0;
-        for (int i = 0; i < listaRutas.getLength() && cantidadRutas < MAX_RUTAS; i++) {
-            Element rutaEl = (Element) listaRutas.item(i);
-            int id = Integer.parseInt(rutaEl.getAttribute("id"));
-            String origen = rutaEl.getElementsByTagName("origen").item(0).getTextContent();
-            String destino = rutaEl.getElementsByTagName("destino").item(0).getTextContent();
-            double duracion = Double.parseDouble(rutaEl.getElementsByTagName("duracionEstimada").item(0).getTextContent());
-            double precio = Double.parseDouble(rutaEl.getElementsByTagName("precioBase").item(0).getTextContent());
-            Ruta ruta = new Ruta(origen, destino, duracion, precio);
-            ruta.setIdRuta(id);
-            rutas[cantidadRutas] = ruta;
-            cantidadRutas++;
+        for (int i = 0; i < lista.getLength() && cantidadRutas < MAX_RUTAS; i++) {
+            Element el = (Element) lista.item(i);
+            int id = Integer.parseInt(el.getAttribute("id"));
+            String origen = el.getElementsByTagName("origen").item(0).getTextContent();
+            String destino = el.getElementsByTagName("destino").item(0).getTextContent();
+            double duracion = Double.parseDouble(el.getElementsByTagName("duracionEstimada").item(0).getTextContent());
+            double precio = Double.parseDouble(el.getElementsByTagName("precioBase").item(0).getTextContent());
+            Ruta r = new Ruta(origen, destino, duracion, precio);
+            r.setIdRuta(id);
+            rutas[cantidadRutas++] = r;
         }
     }
 
-    public Ruta[] getRutas() {
-        return rutas;
+    public Ruta[] getRutas() { 
+        return rutas; 
     }
-
-    public int getCantidadRutas() {
-        return cantidadRutas;
+    public int getCantidadRutas() { 
+        return cantidadRutas; 
     }
-
-    //Busca una ruta por su ID.
     public Ruta buscarRutaPorId(int id) {
         for (int i = 0; i < cantidadRutas; i++) {
-            if (rutas[i].getIdRuta() == id) {
-                return rutas[i];
-            }
+            if (rutas[i].getIdRuta() == id) return rutas[i];
         }
         return null;
     }
 
-    /*
-    Guarda una nueva ruta en rutas.xml.
-    Se asigna automáticamente el siguiente ID.
-     */
+    // Guarda una nueva ruta (se añade al final)
     public void guardarRuta(Ruta ruta) throws Exception {
-        if (cantidadRutas >= MAX_RUTAS) {
-            throw new IllegalStateException("Se alcanzó el máximo de rutas permitidas (" + MAX_RUTAS + ").");
-        }
-        DocumentBuilder builder = crearParserXml();
-        Document documento = builder.parse(archivoXml("rutas.xml"));
-        documento.getDocumentElement().normalize();
-        limpiarEspaciosEnBlanco(documento.getDocumentElement());
-        Element rutasEl = (Element) documento.getElementsByTagName("rutas").item(0);
-        Element nuevaRuta = documento.createElement("ruta");
-        int nuevoId = documento.getElementsByTagName("ruta").getLength() + 1;
-        nuevaRuta.setAttribute("id", String.valueOf(nuevoId));
-        Element origen = documento.createElement("origen");
-        origen.setTextContent(ruta.getOrigen());
-        Element destino = documento.createElement("destino");
-        destino.setTextContent(ruta.getDestino());
-        Element duracion = documento.createElement("duracionEstimada");
-        duracion.setTextContent(String.valueOf(ruta.getDuracionEstimada()));
-        Element precio = documento.createElement("precioBase");
-        precio.setTextContent(String.valueOf(ruta.getPrecioBase()));
-        nuevaRuta.appendChild(origen);
-        nuevaRuta.appendChild(destino);
-        nuevaRuta.appendChild(duracion);
-        nuevaRuta.appendChild(precio);
-        rutasEl.appendChild(nuevaRuta);
+        if (cantidadRutas >= MAX_RUTAS)
+            throw new IllegalStateException("Demasiadas rutas (máximo " + MAX_RUTAS + ").");
+        Document doc = crearParser().parse(archivoXml("rutas.xml"));
+        doc.getDocumentElement().normalize();
+        Element raiz = (Element) doc.getElementsByTagName("rutas").item(0);
+        Element nuevo = doc.createElement("ruta");
+        int nuevoId = doc.getElementsByTagName("ruta").getLength() + 1;
+        nuevo.setAttribute("id", String.valueOf(nuevoId));
+        Element orig = doc.createElement("origen");
+        orig.setTextContent(ruta.getOrigen());
+        Element dest = doc.createElement("destino");
+        dest.setTextContent(ruta.getDestino());
+        Element dur = doc.createElement("duracionEstimada");
+        dur.setTextContent(String.valueOf(ruta.getDuracionEstimada()));
+        Element prec = doc.createElement("precioBase");
+        prec.setTextContent(String.valueOf(ruta.getPrecioBase()));
+        nuevo.appendChild(orig);
+        nuevo.appendChild(dest);
+        nuevo.appendChild(dur);
+        nuevo.appendChild(prec);
+        raiz.appendChild(nuevo);
         ruta.setIdRuta(nuevoId);
-        escribirDocumento(documento, CARPETA_XML + "rutas.xml");
-        // Agregar también en memoria
-        rutas[cantidadRutas] = ruta;
-        cantidadRutas++;
+        guardarDocumento(doc, "rutas.xml");
+        rutas[cantidadRutas++] = ruta;
     }
 
-    // VIAJES (MATRIZ DE HORARIOS)
-    
+    // ------------------------------ BUSES ------------------------------
+    // Lee todos los buses desde buses.xml. Cada bus tiene su placa, capacidad y el mapa de asientos (libres/ocupados).
+    public void cargarBuses() throws Exception {
+        Document doc = crearParser().parse(archivoXml("buses.xml"));
+        doc.getDocumentElement().normalize();
+        NodeList lista = doc.getElementsByTagName("bus");
+        cantidadBuses = 0;
+        for (int i = 0; i < lista.getLength() && cantidadBuses < MAX_BUSES; i++) {
+            Element el = (Element) lista.item(i);
+            int id = Integer.parseInt(el.getAttribute("id"));
+            String placa = el.getElementsByTagName("placa").item(0).getTextContent();
+            int capacidad = Integer.parseInt(el.getElementsByTagName("capacidad").item(0).getTextContent());
+            Bus bus = new Bus(id, placa, capacidad);
+            // Leer el mapa de asientos
+            Element asientosEl = (Element) el.getElementsByTagName("asientos").item(0);
+            if (asientosEl != null) {
+                char[][] mapa = new char[Bus.FILAS][Bus.COLUMNAS];
+                // Por defecto todos libres
+                for (char[] fila : mapa) Arrays.fill(fila, 'O');
+                NodeList filas = asientosEl.getElementsByTagName("fila");
+                for (int j = 0; j < filas.getLength(); j++) {
+                    Element filaEl = (Element) filas.item(j);
+                    int idx = Integer.parseInt(filaEl.getAttribute("index"));
+                    String contenido = filaEl.getTextContent().trim();
+                    if (idx < Bus.FILAS) {
+                        for (int k = 0; k < contenido.length() && k < Bus.COLUMNAS; k++) {
+                            mapa[idx][k] = contenido.charAt(k);
+                        }
+                    }
+                }
+                bus.setAsientos(mapa);
+            }
+            buses[cantidadBuses++] = bus;
+        }
+    }
+    // Busca un bus por su ID.
+    public Bus buscarBusPorId(int id) {
+        for (int i = 0; i < cantidadBuses; i++) {
+            if (buses[i].getIdBus() == id) return buses[i];
+        }
+        return null;
+    }
+
+    // Guarda TODOS los buses en buses.xml (sobrescribe el archivo completo). Se usa al cerrar el programa.
+    public void guardarBuses() throws Exception {
+        Document doc = crearDocumentoVacio("buses");
+        Element raiz = doc.getDocumentElement();
+        for (int i = 0; i < cantidadBuses; i++) {
+            Bus b = buses[i];
+            Element el = doc.createElement("bus");
+            el.setAttribute("id", String.valueOf(b.getIdBus()));
+            Element placa = doc.createElement("placa");
+            placa.setTextContent(b.getPlaca());
+            Element cap = doc.createElement("capacidad");
+            cap.setTextContent(String.valueOf(b.getCapacidad()));
+            el.appendChild(placa);
+            el.appendChild(cap);
+            // Guardar asientos
+            Element asientosEl = doc.createElement("asientos");
+            char[][] mapa = b.getAsientos();
+            for (int f = 0; f < mapa.length; f++) {
+                Element filaEl = doc.createElement("fila");
+                filaEl.setAttribute("index", String.valueOf(f));
+                filaEl.setTextContent(new String(mapa[f]));
+                asientosEl.appendChild(filaEl);
+            }
+            el.appendChild(asientosEl);
+            raiz.appendChild(el);
+        }
+        guardarDocumento(doc, "buses.xml");
+    }
+
+    // Guarda un bus individual (lo añade o actualiza en memoria y luego reescribe todo buses.xml para mantener el formato
+    public void guardarBus(Bus bus) throws Exception {
+        if (bus == null) return;
+        // Ver si ya existe
+        boolean existe = false;
+        for (int i = 0; i < cantidadBuses; i++) {
+            if (buses[i].getIdBus() == bus.getIdBus()) {
+                buses[i] = bus;
+                existe = true;
+                break;
+            }
+        }
+        if (!existe) {
+            if (cantidadBuses < MAX_BUSES) {
+                buses[cantidadBuses++] = bus;
+            } else {
+                throw new IllegalStateException("Límite de buses alcanzado (" + MAX_BUSES + ").");
+            }
+        }
+        guardarBuses(); // Reescribe todo el archivo
+    }
+
     /*
-     Carga la matriz de viajes (Destinos x Horarios) desde viajes.xml.
-     Estructura:
-     - Cada viaje indica su posición en la matriz mediante atributos fila/columna
-     - Cada viaje contiene una referencia a una Ruta (por idRuta)
-     - Cada viaje contiene un Bus con su mapa de asientos
+    Agrega un bus solo en memoria (sin guardar en disco)
+    Útil cuando se crea un bus dentro de un viaje y después se persiste con guardarBus()
      */
-    public void cargarViajes() throws Exception {
-        DocumentBuilder builder = crearParserXml();
-        Document documento = builder.parse(archivoXml("viajes.xml"));
-        documento.getDocumentElement().normalize();
+    public boolean agregarBus(Bus bus) {
+        if (cantidadBuses >= MAX_BUSES) return false;
+        buses[cantidadBuses++] = bus;
+        return true;
+    }
+    
+public Bus[] getBuses() {
+    return buses;
+}
+
+public int getCantidadBuses() {
+    return cantidadBuses;
+}
+
+public int siguienteIdBus() {
+    int max = 0;
+    for (int i = 0; i < cantidadBuses; i++) {
+        if (buses[i].getIdBus() > max) {
+            max = buses[i].getIdBus();
+        }
+    }
+    return max + 1;
+}
+
+    // --------------------------------- VIAJES (MATRIZ DE HORARIOS) ------------------------
+    /*
+    Lee los viajes desde viajes.xml.
+    Ahora cada viaje solo guarda el ID del bus (no el bus completo).
+    Si encuentra un bus incrustado (formato antiguo), lo convierte y lo añade a la lista de buses.
+     */
+    private void cargarViajes() throws Exception {
+        Document doc = crearParser().parse(archivoXml("viajes.xml"));
+        doc.getDocumentElement().normalize();
         viajes = new Viaje[MAX_DESTINOS][MAX_HORARIOS];
-        NodeList listaViajes = documento.getElementsByTagName("viaje");
-        for (int i = 0; i < listaViajes.getLength(); i++) {
-            Element viajeEl = (Element) listaViajes.item(i);
-            int fila = Integer.parseInt(viajeEl.getAttribute("fila"));
-            int columna = Integer.parseInt(viajeEl.getAttribute("columna"));
-            // Validar que la posición está dentro de los límites
-            if (fila < 0 || fila >= MAX_DESTINOS || columna < 0 || columna >= MAX_HORARIOS) {
-                System.out.println("⚠️ El viaje id=" + viajeEl.getAttribute("id") + 
-                    " tiene una posición fuera del tamaño de la matriz y fue omitido.");
+        NodeList lista = doc.getElementsByTagName("viaje");
+        for (int i = 0; i < lista.getLength(); i++) {
+            Element el = (Element) lista.item(i);
+            int fila = Integer.parseInt(el.getAttribute("fila"));
+            int col = Integer.parseInt(el.getAttribute("columna"));
+            if (fila < 0 || fila >= MAX_DESTINOS || col < 0 || col >= MAX_HORARIOS) {
+                System.out.println("⚠️ Viaje con ID " + el.getAttribute("id") + " está fuera de la matriz y se omite.");
                 continue;
             }
-            Viaje viaje = new Viaje();
-            viaje.setIdViaje(Integer.parseInt(viajeEl.getAttribute("id")));
-            viaje.setFecha(viajeEl.getElementsByTagName("fecha").item(0).getTextContent());
-            viaje.setHora(viajeEl.getElementsByTagName("hora").item(0).getTextContent());
-            int idRuta = Integer.parseInt(
-                viajeEl.getElementsByTagName("idRuta").item(0).getTextContent());
-            viaje.setRuta(buscarRutaPorId(idRuta));
-            Element busEl = (Element) viajeEl.getElementsByTagName("bus").item(0);
-            if (busEl != null) {
-                viaje.setBus(parseBus(busEl));
+            Viaje v = new Viaje();
+            v.setIdViaje(Integer.parseInt(el.getAttribute("id")));
+            v.setFecha(el.getElementsByTagName("fecha").item(0).getTextContent());
+            v.setHora(el.getElementsByTagName("hora").item(0).getTextContent());
+            int idRuta = Integer.parseInt(el.getElementsByTagName("idRuta").item(0).getTextContent());
+            v.setRuta(buscarRutaPorId(idRuta));
+            // Buscar referencia al bus (nuevo formato)
+            Element idBusEl = (Element) el.getElementsByTagName("idBus").item(0);
+            if (idBusEl != null) {
+                int idBus = Integer.parseInt(idBusEl.getTextContent());
+                v.setBus(buscarBusPorId(idBus));
+            } else {
+                // Formato antiguo: bus incrustado
+                Element busEl = (Element) el.getElementsByTagName("bus").item(0);
+                if (busEl != null) {
+                    Bus bus = parseBus(busEl);
+                    // Si no existe en la lista, lo agregamos
+                    if (buscarBusPorId(bus.getIdBus()) == null) {
+                        if (cantidadBuses < MAX_BUSES) {
+                            buses[cantidadBuses++] = bus;
+                        } else {
+                            System.out.println("⚠️ No se pudo agregar bus " + bus.getIdBus() + " (límite alcanzado)");
+                        }
+                    }
+                    v.setBus(bus);
+                }
             }
-            viajes[fila][columna] = viaje;
+            viajes[fila][col] = v;
         }
     }
 
-    /*
-    Construye un objeto Bus a partir de un elemento XML.
-    Incluye la reconstrucción del mapa de asientos desde el XML.
-     */
+    // Convierte un elemento XML <bus> en un objeto Bus (para compatibilidad con formato antiguo)
     private Bus parseBus(Element busEl) {
-        int idBus = Integer.parseInt(busEl.getElementsByTagName("id").item(0).getTextContent());
+        int id = Integer.parseInt(busEl.getElementsByTagName("id").item(0).getTextContent());
         String placa = busEl.getElementsByTagName("placa").item(0).getTextContent();
-        int capacidad = Integer.parseInt(busEl.getElementsByTagName("capacidad").item(0).getTextContent());
-        Bus bus = new Bus(idBus, placa, capacidad);
+        int cap = Integer.parseInt(busEl.getElementsByTagName("capacidad").item(0).getTextContent());
+        Bus bus = new Bus(id, placa, cap);
         Element asientosEl = (Element) busEl.getElementsByTagName("asientos").item(0);
         if (asientosEl != null) {
-            // Inicializar mapa vacío (todos libres)
             char[][] mapa = new char[Bus.FILAS][Bus.COLUMNAS];
-            for (char[] filaArr : mapa) {
-                Arrays.fill(filaArr, 'O');
-            }
-            // Cargar estado de asientos desde XML
-            NodeList filasXml = asientosEl.getElementsByTagName("fila");
-            for (int i = 0; i < filasXml.getLength(); i++) {
-                Element filaEl = (Element) filasXml.item(i);
-                int index = Integer.parseInt(filaEl.getAttribute("index"));
-                String valores = filaEl.getTextContent().trim();
-
-                if (index >= 0 && index < Bus.FILAS) {
-                    for (int col = 0; col < valores.length() && col < Bus.COLUMNAS; col++) {
-                        mapa[index][col] = valores.charAt(col);
+            for (char[] f : mapa) Arrays.fill(f, 'O');
+            NodeList filas = asientosEl.getElementsByTagName("fila");
+            for (int i = 0; i < filas.getLength(); i++) {
+                Element filaEl = (Element) filas.item(i);
+                int idx = Integer.parseInt(filaEl.getAttribute("index"));
+                String vals = filaEl.getTextContent().trim();
+                if (idx < Bus.FILAS) {
+                    for (int j = 0; j < vals.length() && j < Bus.COLUMNAS; j++) {
+                        mapa[idx][j] = vals.charAt(j);
                     }
                 }
             }
@@ -374,26 +429,17 @@ public class Persistencia {
         return bus;
     }
 
-    public Viaje[][] getViajes() {
-        return viajes;
-    }
-
-    /*
-     Busca todos los viajes programados hacia un destino específico.
-     Recorre la matriz de viajes buscando la fila que corresponde al destino
-     y devuelve todos los viajes (frecuencias horarias) en esa fila.
-     */
+    public Viaje[][] getViajes() { return viajes; }
+    // Devuelve todos los viajes que van a un destino específico
     public Viaje[] buscarViajesPorDestino(String destino) {
         Viaje[] resultado = new Viaje[MAX_HORARIOS];
         int encontrados = 0;
-
         for (int fila = 0; fila < MAX_DESTINOS; fila++) {
-            String destinoDeLaFila = obtenerDestinoDeFila(fila);
-            if (destinoDeLaFila != null && destinoDeLaFila.equalsIgnoreCase(destino)) {
-                for (int columna = 0; columna < MAX_HORARIOS; columna++) {
-                    if (viajes[fila][columna] != null) {
-                        resultado[encontrados] = viajes[fila][columna];
-                        encontrados++;
+            String dest = obtenerDestinoDeFila(fila);
+            if (dest != null && dest.equalsIgnoreCase(destino)) {
+                for (int col = 0; col < MAX_HORARIOS; col++) {
+                    if (viajes[fila][col] != null) {
+                        resultado[encontrados++] = viajes[fila][col];
                     }
                 }
                 break;
@@ -402,368 +448,235 @@ public class Persistencia {
         return Arrays.copyOf(resultado, encontrados);
     }
 
-    /*
-     Obtiene el nombre del destino asociado a una fila de la matriz.
-     Lo toma del primer viaje no nulo que encuentre en esa fila.
-     */
     private String obtenerDestinoDeFila(int fila) {
-        for (int columna = 0; columna < MAX_HORARIOS; columna++) {
-            if (viajes[fila][columna] != null && viajes[fila][columna].getRuta() != null) {
-                return viajes[fila][columna].getRuta().getDestino();
+        for (int col = 0; col < MAX_HORARIOS; col++) {
+            if (viajes[fila][col] != null && viajes[fila][col].getRuta() != null) {
+                return viajes[fila][col].getRuta().getDestino();
             }
         }
         return null;
     }
 
-    /*
-    Obtiene o crea la fila de la matriz para un destino específico.
-     Si el destino ya tiene viajes registrados, retorna su fila.
-     Si es nuevo, asigna la primera fila disponible.
-     Este método es fundamental para "Agregar Horario":
-     - Un destino nuevo = una fila nueva
-     - Un horario nuevo para un destino existente = una columna nueva en esa fila
-     */
+    // Busca una fila libre para un nuevo destino, o devuelve la fila existente si ya está
     public int obtenerOCrearFilaParaDestino(String destino) {
-        // Buscar fila existente para este destino
-        for (int fila = 0; fila < MAX_DESTINOS; fila++) {
-            String destinoDeLaFila = obtenerDestinoDeFila(fila);
-            if (destinoDeLaFila != null && destinoDeLaFila.equalsIgnoreCase(destino)) {
-                return fila;
-            }
+        for (int f = 0; f < MAX_DESTINOS; f++) {
+            String d = obtenerDestinoDeFila(f);
+            if (d != null && d.equalsIgnoreCase(destino)) return f;
         }
-        
-        // No existe, buscar primera fila disponible
-        for (int fila = 0; fila < MAX_DESTINOS; fila++) {
-            if (obtenerDestinoDeFila(fila) == null) {
-                return fila;
-            }
+        for (int f = 0; f < MAX_DESTINOS; f++) {
+            if (obtenerDestinoDeFila(f) == null) return f;
         }
-        
-        return -1; // No hay filas disponibles
+        return -1; // No hay espacio
     }
-
-    // Busca la primera columna (franja horaria) libre en una fila específica.
+    // Devuelve la primera columna libre en una fila
     public int primeraColumnaLibre(int fila) {
-        if (fila < 0 || fila >= MAX_DESTINOS) {
-            return -1;
-        }
-        for (int columna = 0; columna < MAX_HORARIOS; columna++) {
-            if (viajes[fila][columna] == null) {
-                return columna;
-            }
+        if (fila < 0 || fila >= MAX_DESTINOS) return -1;
+        for (int col = 0; col < MAX_HORARIOS; col++) {
+            if (viajes[fila][col] == null) return col;
         }
         return -1;
     }
 
-    /**
-     * Calcula el siguiente ID disponible para un nuevo viaje.
-     * Recorre toda la matriz buscando el ID más alto.
-     * 
-     * @return próximo ID disponible
-     */
     public int siguienteIdViaje() {
-        int maxId = 0;
-        for (int fila = 0; fila < MAX_DESTINOS; fila++) {
-            for (int columna = 0; columna < MAX_HORARIOS; columna++) {
-                if (viajes[fila][columna] != null && 
-                    viajes[fila][columna].getIdViaje() > maxId) {
-                    maxId = viajes[fila][columna].getIdViaje();
+        int max = 0;
+        for (int f = 0; f < MAX_DESTINOS; f++) {
+            for (int c = 0; c < MAX_HORARIOS; c++) {
+                if (viajes[f][c] != null && viajes[f][c].getIdViaje() > max) {
+                    max = viajes[f][c].getIdViaje();
                 }
             }
         }
-        return maxId + 1;
+        return max + 1;
     }
 
-    /**
-     * Inserta un viaje en una posición específica de la matriz.
-     * Valida que la posición exista y esté libre.
-     * 
-     * @param fila índice de fila
-     * @param columna índice de columna
-     * @param viaje Viaje a insertar
-     * @return true si se insertó correctamente, false en caso contrario
-     */
+    // Añade un viaje en una posición concreta de la matriz
     public boolean agregarViaje(int fila, int columna, Viaje viaje) {
-        if (fila < 0 || fila >= MAX_DESTINOS || columna < 0 || columna >= MAX_HORARIOS) {
-            return false;
-        }
-        if (viajes[fila][columna] != null) {
-            return false;
-        }
+        if (fila < 0 || fila >= MAX_DESTINOS || columna < 0 || columna >= MAX_HORARIOS) return false;
+        if (viajes[fila][columna] != null) return false;
         viajes[fila][columna] = viaje;
         return true;
     }
 
-    /**
-     * Obtiene todos los viajes de la matriz en un solo arreglo.
-     * Usado para reportes de ocupación.
-     * 
-     * @return arreglo de Viaje sin espacios vacíos
-     */
     public Viaje[] getTodosLosViajes() {
         Viaje[] resultado = new Viaje[MAX_DESTINOS * MAX_HORARIOS];
-        int encontrados = 0;
-        for (int fila = 0; fila < MAX_DESTINOS; fila++) {
-            for (int columna = 0; columna < MAX_HORARIOS; columna++) {
-                if (viajes[fila][columna] != null) {
-                    resultado[encontrados] = viajes[fila][columna];
-                    encontrados++;
-                }
+        int i = 0;
+        for (int f = 0; f < MAX_DESTINOS; f++) {
+            for (int c = 0; c < MAX_HORARIOS; c++) {
+                if (viajes[f][c] != null) resultado[i++] = viajes[f][c];
             }
         }
-        return Arrays.copyOf(resultado, encontrados);
+        return Arrays.copyOf(resultado, i);
     }
 
-    public static int getMaxDestinos() {
-        return MAX_DESTINOS;
-    }
+    public static int getMaxDestinos() { return MAX_DESTINOS; }
+    public static int getMaxHorarios() { return MAX_HORARIOS; }
 
-    public static int getMaxHorarios() {
-        return MAX_HORARIOS;
-    }
-
-    /**
-     * Busca un viaje dentro de la matriz por su ID.
-     * Usado para reconstruir la relación entre Venta y Viaje al cargar ventas.
-     * 
-     * @param idViaje ID del viaje a buscar
-     * @return el Viaje encontrado, o null si no existe
-     */
-    public Viaje buscarViajePorId(int idViaje) {
-        for (int fila = 0; fila < MAX_DESTINOS; fila++) {
-            for (int columna = 0; columna < MAX_HORARIOS; columna++) {
-                if (viajes[fila][columna] != null && 
-                    viajes[fila][columna].getIdViaje() == idViaje) {
-                    return viajes[fila][columna];
-                }
+    public Viaje buscarViajePorId(int id) {
+        for (int f = 0; f < MAX_DESTINOS; f++) {
+            for (int c = 0; c < MAX_HORARIOS; c++) {
+                if (viajes[f][c] != null && viajes[f][c].getIdViaje() == id) return viajes[f][c];
             }
         }
         return null;
     }
 
-    /**
-     * Guarda la matriz completa de viajes en viajes.xml.
-     * Incluye el mapa actualizado de asientos de cada bus.
-     * Los asientos ocupados durante la sesión se persisten.
-     * 
-     * @throws Exception si hay error de E/S
-     */
+    // Guarda todos los viajes en viajes.xml. Ahora solo guarda el ID del bus, no el bus completo
     public void guardarViajes() throws Exception {
-        DocumentBuilder builder = crearParserXml();
-        Document documento = builder.newDocument();
-        Element root = documento.createElement("root");
-        documento.appendChild(root);
-        Element viajesEl = documento.createElement("viajes");
-        root.appendChild(viajesEl);
-
-        for (int fila = 0; fila < MAX_DESTINOS; fila++) {
-            for (int columna = 0; columna < MAX_HORARIOS; columna++) {
-                Viaje viaje = viajes[fila][columna];
-                if (viaje == null) {
-                    continue;
-                }
-
-                Element viajeEl = documento.createElement("viaje");
-                viajeEl.setAttribute("id", String.valueOf(viaje.getIdViaje()));
-                viajeEl.setAttribute("fila", String.valueOf(fila));
-                viajeEl.setAttribute("columna", String.valueOf(columna));
-                
-                Element fecha = documento.createElement("fecha");
-                fecha.setTextContent(viaje.getFecha());
-                Element hora = documento.createElement("hora");
-                hora.setTextContent(viaje.getHora());
-                Element idRuta = documento.createElement("idRuta");
-                idRuta.setTextContent(String.valueOf(
-                    viaje.getRuta() != null ? viaje.getRuta().getIdRuta() : -1));
-                
-                viajeEl.appendChild(fecha);
-                viajeEl.appendChild(hora);
-                viajeEl.appendChild(idRuta);
-
-                if (viaje.getBus() != null) {
-                    viajeEl.appendChild(crearElementoBus(documento, viaje.getBus()));
-                }
-                viajesEl.appendChild(viajeEl);
+        Document doc = crearDocumentoVacio("viajes");
+        Element raiz = doc.getDocumentElement();
+        for (int f = 0; f < MAX_DESTINOS; f++) {
+            for (int c = 0; c < MAX_HORARIOS; c++) {
+                Viaje v = viajes[f][c];
+                if (v == null) continue;
+                Element el = doc.createElement("viaje");
+                el.setAttribute("id", String.valueOf(v.getIdViaje()));
+                el.setAttribute("fila", String.valueOf(f));
+                el.setAttribute("columna", String.valueOf(c));
+                Element fecha = doc.createElement("fecha");
+                fecha.setTextContent(v.getFecha());
+                Element hora = doc.createElement("hora");
+                hora.setTextContent(v.getHora());
+                Element idRuta = doc.createElement("idRuta");
+                idRuta.setTextContent(String.valueOf(v.getRuta() != null ? v.getRuta().getIdRuta() : -1));
+                Element idBus = doc.createElement("idBus");
+                idBus.setTextContent(String.valueOf(v.getBus() != null ? v.getBus().getIdBus() : -1));
+                el.appendChild(fecha);
+                el.appendChild(hora);
+                el.appendChild(idRuta);
+                el.appendChild(idBus);
+                raiz.appendChild(el);
             }
         }
-        escribirDocumento(documento, CARPETA_XML + "viajes.xml");
+        guardarDocumento(doc, "viajes.xml");
     }
 
-    /**
-     * Construye un elemento XML Bus para guardarlo dentro de un viaje.
-     * Incluye el mapa de asientos actual.
-     * 
-     * @param documento Document XML
-     * @param bus Bus a serializar
-     * @return elemento XML con los datos del bus
-     */
-    private Element crearElementoBus(Document documento, Bus bus) {
-        Element busEl = documento.createElement("bus");
-        
-        Element id = documento.createElement("id");
-        id.setTextContent(String.valueOf(bus.getIdBus()));
-        Element placa = documento.createElement("placa");
-        placa.setTextContent(bus.getPlaca());
-        Element capacidad = documento.createElement("capacidad");
-        capacidad.setTextContent(String.valueOf(bus.getCapacidad()));
-        
-        busEl.appendChild(id);
-        busEl.appendChild(placa);
-        busEl.appendChild(capacidad);
-        
-        Element asientosEl = documento.createElement("asientos");
-        char[][] mapa = bus.getAsientos();
-        for (int i = 0; i < mapa.length; i++) {
-            Element filaEl = documento.createElement("fila");
-            filaEl.setAttribute("index", String.valueOf(i));
-            filaEl.setTextContent(new String(mapa[i]));
-            asientosEl.appendChild(filaEl);
-        }
-        busEl.appendChild(asientosEl);
-        
-        return busEl;
-    }
-
-    // ==================== VENTAS ====================
-    
-    /**
-     * Carga el historial de ventas desde ventas.xml.
-     * Reconstruye las relaciones con sus Viajes y Pasajeros.
-     * 
-     * Prerequisito: cargarViajes() debe ejecutarse ANTES para poder enlazar viajes.
-     * 
-     * @throws Exception si el archivo no puede leerse
-     */
-    public void cargarVentas() throws Exception {
-        DocumentBuilder builder = crearParserXml();
-        Document documento = builder.parse(archivoXml("ventas.xml"));
-        documento.getDocumentElement().normalize();
-        
-        NodeList listaVentas = documento.getElementsByTagName("venta");
+    // ------------------------------------- VENTAS -------------------------------------
+    private void cargarVentas() throws Exception {
+        Document doc = crearParser().parse(archivoXml("ventas.xml"));
+        doc.getDocumentElement().normalize();
+        NodeList lista = doc.getElementsByTagName("venta");
         cantidadVentas = 0;
-        
-        for (int i = 0; i < listaVentas.getLength() && cantidadVentas < MAX_VENTAS; i++) {
-            Element ventaEl = (Element) listaVentas.item(i);
-            
-            Venta venta = new Venta();
-            venta.setIdVenta(Integer.parseInt(ventaEl.getAttribute("id")));
-            venta.setFecha(ventaEl.getElementsByTagName("fecha").item(0).getTextContent());
-            venta.setPrecioFinal(Double.parseDouble(
-                ventaEl.getElementsByTagName("precioFinal").item(0).getTextContent()));
-
-            // Enlazar con el viaje
-            int idViaje = Integer.parseInt(
-                ventaEl.getElementsByTagName("idViaje").item(0).getTextContent());
-            venta.setViaje(buscarViajePorId(idViaje));
-            
-            // Reconstruir pasajero
-            Element pasajeroEl = (Element) ventaEl.getElementsByTagName("pasajero").item(0);
-            if (pasajeroEl != null) {
-                String dni = pasajeroEl.getElementsByTagName("dni").item(0).getTextContent();
-                String nombre = pasajeroEl.getElementsByTagName("nombre").item(0).getTextContent();
-                int edad = Integer.parseInt(pasajeroEl.getElementsByTagName("edad").item(0).getTextContent());
-                venta.setPasajero(new Pasajero(dni, nombre, edad));
+        for (int i = 0; i < lista.getLength() && cantidadVentas < MAX_VENTAS; i++) {
+            Element el = (Element) lista.item(i);
+            Venta v = new Venta();
+            v.setIdVenta(Integer.parseInt(el.getAttribute("id")));
+            v.setFecha(el.getElementsByTagName("fecha").item(0).getTextContent());
+            v.setPrecioFinal(Double.parseDouble(el.getElementsByTagName("precioFinal").item(0).getTextContent()));
+            int idViaje = Integer.parseInt(el.getElementsByTagName("idViaje").item(0).getTextContent());
+            v.setViaje(buscarViajePorId(idViaje));
+            Element p = (Element) el.getElementsByTagName("pasajero").item(0);
+            if (p != null) {
+                String dni = p.getElementsByTagName("dni").item(0).getTextContent();
+                String nombre = p.getElementsByTagName("nombre").item(0).getTextContent();
+                int edad = Integer.parseInt(p.getElementsByTagName("edad").item(0).getTextContent());
+                v.setPasajero(new Pasajero(dni, nombre, edad));
             }
-            
-            ventas[cantidadVentas] = venta;
-            cantidadVentas++;
+            ventas[cantidadVentas++] = v;
         }
     }
 
-    /**
-     * Registra una nueva venta en memoria.
-     * Se llama cada vez que el Cajero completa una venta exitosa.
-     * 
-     * @param venta Venta a registrar
-     * @return true si se registró correctamente, false si se alcanzó el límite
-     */
     public boolean registrarVenta(Venta venta) {
-        if (venta == null || cantidadVentas >= MAX_VENTAS) {
-            return false;
-        }
-        ventas[cantidadVentas] = venta;
-        cantidadVentas++;
+        if (venta == null || cantidadVentas >= MAX_VENTAS) return false;
+        ventas[cantidadVentas++] = venta;
         return true;
     }
 
-    public Venta[] getVentas() {
-        return ventas;
-    }
+    public Venta[] getVentas() { return ventas; }
+    public int getCantidadVentas() { return cantidadVentas; }
+    public Venta[] getVentasRegistradas() { return Arrays.copyOf(ventas, cantidadVentas); }
 
-    public int getCantidadVentas() {
-        return cantidadVentas;
-    }
-
-    /**
-     * Obtiene solo las ventas registradas (sin las posiciones vacías del arreglo).
-     * 
-     * @return arreglo de Venta sin espacios vacíos
-     */
-    public Venta[] getVentasRegistradas() {
-        return Arrays.copyOf(ventas, cantidadVentas);
-    }
-
-    /**
-     * Guarda el historial completo de ventas en ventas.xml.
-     * Incluye las ventas cargadas al inicio más las nuevas de esta sesión.
-     * 
-     * @throws Exception si hay error de E/S
-     */
     public void guardarVentas() throws Exception {
-        DocumentBuilder builder = crearParserXml();
-        Document documento = builder.newDocument();
-        Element root = documento.createElement("root");
-        documento.appendChild(root);
-        Element ventasEl = documento.createElement("ventas");
-        root.appendChild(ventasEl);
-
+        Document doc = crearDocumentoVacio("ventas");
+        Element raiz = doc.getDocumentElement();
         for (int i = 0; i < cantidadVentas; i++) {
             Venta v = ventas[i];
-            Element ventaEl = documento.createElement("venta");
-            ventaEl.setAttribute("id", String.valueOf(v.getIdVenta()));
-            
-            Element fecha = documento.createElement("fecha");
+            Element el = doc.createElement("venta");
+            el.setAttribute("id", String.valueOf(v.getIdVenta()));
+            Element fecha = doc.createElement("fecha");
             fecha.setTextContent(v.getFecha());
-            Element precioFinal = documento.createElement("precioFinal");
-            precioFinal.setTextContent(String.valueOf(v.getPrecioFinal()));
-            Element idViaje = documento.createElement("idViaje");
-            idViaje.setTextContent(String.valueOf(
-                v.getViaje() != null ? v.getViaje().getIdViaje() : -1));
-            
-            ventaEl.appendChild(fecha);
-            ventaEl.appendChild(precioFinal);
-            ventaEl.appendChild(idViaje);
-
+            Element precio = doc.createElement("precioFinal");
+            precio.setTextContent(String.valueOf(v.getPrecioFinal()));
+            Element idViaje = doc.createElement("idViaje");
+            idViaje.setTextContent(String.valueOf(v.getViaje() != null ? v.getViaje().getIdViaje() : -1));
+            el.appendChild(fecha);
+            el.appendChild(precio);
+            el.appendChild(idViaje);
             if (v.getPasajero() != null) {
-                Element pasajeroEl = documento.createElement("pasajero");
-                Element dni = documento.createElement("dni");
+                Element p = doc.createElement("pasajero");
+                Element dni = doc.createElement("dni");
                 dni.setTextContent(v.getPasajero().getDni());
-                Element nombre = documento.createElement("nombre");
+                Element nombre = doc.createElement("nombre");
                 nombre.setTextContent(v.getPasajero().getNombre());
-                Element edad = documento.createElement("edad");
+                Element edad = doc.createElement("edad");
                 edad.setTextContent(String.valueOf(v.getPasajero().getEdad()));
-                pasajeroEl.appendChild(dni);
-                pasajeroEl.appendChild(nombre);
-                pasajeroEl.appendChild(edad);
-                ventaEl.appendChild(pasajeroEl);
+                p.appendChild(dni);
+                p.appendChild(nombre);
+                p.appendChild(edad);
+                el.appendChild(p);
             }
-            ventasEl.appendChild(ventaEl);
+            raiz.appendChild(el);
         }
-        escribirDocumento(documento, CARPETA_XML + "ventas.xml");
+        guardarDocumento(doc, "ventas.xml");
     }
 
-    // ==================== GUARDADO GENERAL ====================
-    
-    /**
-     * Punto único de guardado al cerrar el programa.
-     * Persiste los cambios realizados durante la sesión:
-     * - viajes.xml: asientos actualizados (ocupados durante la sesión)
-     * - ventas.xml: nuevo historial de ventas
-     * 
-     * @throws Exception si hay error de E/S
-     */
-    public void guardarDatos() throws Exception {
+    // GUARDAR TODO AL CERRAR
+
+    public void guardarTodos() throws Exception {
+        guardarUsuarios();
+        guardarRutas();
+        guardarBuses();
         guardarViajes();
         guardarVentas();
+    }
+
+    //  MÉTODOS AUXILIARES 
+
+    private Document crearDocumentoVacio(String raiz) throws Exception {
+        Document doc = crearParser().newDocument();
+        doc.appendChild(doc.createElement(raiz));
+        return doc;
+    }
+
+    private void guardarUsuarios() throws Exception {
+        Document doc = crearDocumentoVacio("usuarios");
+        Element raiz = doc.getDocumentElement();
+        for (int i = 0; i < cantidadUsuarios; i++) {
+            Usuario u = usuarios[i];
+            Element el = doc.createElement("usuario");
+            el.setAttribute("id", String.valueOf(u.getId()));
+            el.setAttribute("rol", u.getRol());
+            Element nom = doc.createElement("nombre");
+            nom.setTextContent(u.getNombre());
+            Element pass = doc.createElement("contrasena");
+            pass.setTextContent(u.getContrasena());
+            el.appendChild(nom);
+            el.appendChild(pass);
+            raiz.appendChild(el);
+        }
+        guardarDocumento(doc, "usuarios.xml");
+    }
+
+    private void guardarRutas() throws Exception {
+        Document doc = crearDocumentoVacio("rutas");
+        Element raiz = doc.getDocumentElement();
+        for (int i = 0; i < cantidadRutas; i++) {
+            Ruta r = rutas[i];
+            Element el = doc.createElement("ruta");
+            el.setAttribute("id", String.valueOf(r.getIdRuta()));
+            Element orig = doc.createElement("origen");
+            orig.setTextContent(r.getOrigen());
+            Element dest = doc.createElement("destino");
+            dest.setTextContent(r.getDestino());
+            Element dur = doc.createElement("duracionEstimada");
+            dur.setTextContent(String.valueOf(r.getDuracionEstimada()));
+            Element prec = doc.createElement("precioBase");
+            prec.setTextContent(String.valueOf(r.getPrecioBase()));
+            el.appendChild(orig);
+            el.appendChild(dest);
+            el.appendChild(dur);
+            el.appendChild(prec);
+            raiz.appendChild(el);
+        }
+        guardarDocumento(doc, "rutas.xml");
     }
 }

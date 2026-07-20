@@ -11,66 +11,84 @@ import transporte.Pasajero;
 import transporte.Venta;
 import transporte.Viaje;
 
-/*
-Usuario con rol Cajero/Counter. 
-Se encarga de la venta y reserva de pasajes: mostrar el mapa de asientos, 
-registrar al pasajero, ocupar el asiento elegido y generar el comprobante de venta.
+/* 
+Cajero: gestiona la venta y reserva de pasajes
+- Muestra asientos disponibles
+- Valida datos del pasajero 
+- Calcula precio con descuentos
+- Genera comprobantes
+@author Julian
  */
 public class Cajero extends Usuario {
-
+    //Constructores
     public Cajero() {
     }
-
-    public Cajero(int id, String nombre, String contraseña) {
-        super(id, nombre, contraseña);
+    public Cajero(int id, String nombre, String contrasena) {
+        super(id, nombre, contrasena);
+    }
+    public Cajero(int id, String nombre, String contrasena, String rol) {
+        super(id, nombre, contrasena, rol);
     }
 
-    public Cajero(int id, String nombre, String contraseña, String rol) {
-        super(id, nombre, contraseña, rol);
-    }
-
-    /* 
-    Venta / Reserva de pasaje 
-     1. Muestra el mapa de asientos, pide la posicion deseada,
-     2. Registra al pasajero, calcula el precio final (con descuentos si corresponde) y genera el comprobante.
+    // ------------------------------ VENTA DE PASAJE ------------------------------
+    /*
+     Realiza la venta de un pasaje con todas las validaciones
+    - Muestra mapa de asientos
+    - Solicita fila (letra), columna (número), DNI, nombre y edad
+    - Valida asiento libre, DNI (8 dígitos), nombre (≥2 letras), edad (0-120) 
+    - Calcula precio final con descuentos
+    - Ocupa el asiento y registra la venta
      */
     public Venta venderPasaje(Viaje viaje, Scanner entrada) {
         if (viaje == null || viaje.getBus() == null || viaje.getRuta() == null) {
-            System.out.println("❌ El viaje seleccionado no tiene bus o ruta asignados.");
+            System.out.println("❌ Viaje, bus o ruta no válidos.");
             return null;
         }
         Bus bus = viaje.getBus();
+        // Verificar que el mapa de asientos exista
+        if (bus.getAsientos() == null || bus.getAsientos().length == 0) {
+            System.out.println("❌ El bus no tiene un mapa de asientos válido.");
+            return null;
+        }
+        // Verifica que la primera fila exista
+        if (bus.getAsientos()[0] == null || bus.getAsientos()[0].length == 0) {
+            System.out.println("❌ El mapa de asientos del bus está corrupto.");
+            return null;
+        }
         bus.mostrarAsientos();
+        System.out.print("Fila (letra, ej. A): ");
+        String textoFila = entrada.nextLine().trim();
+        System.out.print("Número de asiento (1-" + bus.getAsientos()[0].length + "): ");
+        String textoColumna = entrada.nextLine().trim();
+        System.out.print("DNI (8 dígitos): ");
+        String dni = entrada.nextLine().trim();
+        System.out.print("Nombre: ");
+        String nombre = entrada.nextLine().trim();
+        System.out.print("Edad: ");
+        String textoEdad = entrada.nextLine().trim();
 
-        System.out.print("Ingrese la fila del asiento (Letra, ej. A): ");
-        String textoFila = entrada.nextLine();
-        System.out.print("Ingrese el numero de asiento (1 a " + bus.getAsientos()[0].length + "): ");
-        String textoColumna = entrada.nextLine();
-        System.out.print("DNI del pasajero (8 digitos): ");
-        String dni = entrada.nextLine();
-        System.out.print("Nombre del pasajero: ");
-        String nombre = entrada.nextLine();
-        System.out.print("Edad del pasajero: ");
-        String textoEdad = entrada.nextLine();
         try {
-            // Validar y parsear usando métodos estáticos de Validacion
-            int fila = Validacion.validarYParsearFila(textoFila, bus.getAsientos().length);
-            int columna = Validacion.validarYParsearColumna(textoColumna, bus.getAsientos()[0].length);
-            Validacion.validarDniOExcepcion(dni);
-            Validacion.validarTextoNoVacioOExcepcion(nombre, "Nombre del pasajero");
-            int edad = Validacion.validarYParsearEdad(textoEdad);
-            // Validar estado del asiento respecto al bus
-            Validacion.validarAsientoConBus(bus, fila, columna);
-            // Ocupar el asiento
+            int fila = Validacion.parsearFila(textoFila, bus.getAsientos().length);
+            int columna = Validacion.parsearColumna(textoColumna, bus.getAsientos()[0].length);
+            Validacion.validarDni(dni);
+            Validacion.validarTextoNoVacio(nombre, "Nombre");
+            if (nombre.length() < 2) {
+                throw new IllegalArgumentException("El nombre debe tener al menos 2 caracteres.");
+            }
+            if (nombre.matches(".*\\d.*")) {
+                throw new IllegalArgumentException("El nombre no puede contener números.");
+            }
+            int edad = Validacion.parsearEdad(textoEdad);
+            // Valida asiento (exista y esté libre)
+            Validacion.validarAsientoEnBus(bus, fila, columna);
+            // Ocupar asiento (solo si está libre)
             if (!bus.ocuparAsiento(fila, columna)) {
-                throw new IllegalStateException("No se pudo completar la venta: el asiento ya no esta disponible.");
+                throw new IllegalStateException("El asiento ya fue ocupado.");
             }
 
-            Pasajero pasajero = new Pasajero(dni.trim(), nombre.trim(), edad);
-            // Calcular precio con descuentos si aplica
+            Pasajero pasajero = new Pasajero(dni, nombre, edad);
             double precioBase = viaje.getRuta().getPrecioBase();
-            double precioFinal = pasajero.calcularPrecioFinal(precioBase, edad);
-            // Registrar la venta
+            double precioFinal = pasajero.calcularPrecioFinal(precioBase);
             String fechaHoy = LocalDate.now().toString();
             Venta venta = new Venta();
             venta.setIdVenta(Venta.generarSiguienteId());
@@ -78,101 +96,161 @@ public class Cajero extends Usuario {
             venta.setPrecioFinal(precioFinal);
             venta.setPasajero(pasajero);
             venta.setViaje(viaje);
-
-            // Generar boleto y comprobante
+            // Emitir comprobantes
             Boleto boleto = new Boleto(Boleto.generarSiguienteId(), fechaHoy, fila, columna, precioFinal);
             System.out.println();
             boleto.emitirComprobante();
             System.out.println(venta.generarComprobante());
-            System.out.println("\n✅ Venta registrada correctamente.\n");
+            System.out.println("\n✔ Venta registrada.\n");
             return venta;
-        } catch (IllegalArgumentException | IllegalStateException datosInvalidos) {
-            System.out.println("❌ " + datosInvalidos.getMessage());
-            return null;
-        } catch (Exception errorInesperado) {
-            System.out.println("❌ No se pudo completar la venta: " + errorInesperado.getMessage());
+        } catch (Exception e) {
+            System.out.println("✖ " + e.getMessage());
+            // Intentar liberar asiento si se ocupó y falló después
+            try {
+                int fila = Validacion.parsearFila(textoFila, bus.getAsientos().length);
+                int columna = Validacion.parsearColumna(textoColumna, bus.getAsientos()[0].length);
+                bus.liberarAsiento(fila, columna);
+            } catch (Exception ignored) {
+            }
             return null;
         }
     }
 
-    // Pide un destino y muestra (sin vender) los viajes programados hacia ese destino, recorriendo la matriz/listado en Persistencia.
+    // --------------------------- MOSTRAR VIAJES DISPONIBLES ---------------------------
+    // Muestra los viajes disponibles hacia un destino. Busca en la matriz de viajes y lista los que coincidan.
     public void mostrarViajesDisponibles(Persistencia persistencia, Scanner entrada) {
-        System.out.print("Ingrese el destino a buscar: ");
+        System.out.print("Ingrese el destino: ");
         String destino = entrada.nextLine().trim();
         try {
-            Validacion.validarTextoNoVacioOExcepcion(destino, "Destino");
-        } catch (IllegalArgumentException e) {
-            System.out.println("❌ " + e.getMessage());
+            Validacion.validarTextoNoVacio(destino, "Destino");
+            if (destino.length() < 2) {
+                throw new IllegalArgumentException("El destino debe tener al menos 2 caracteres.");
+            }
+            if (destino.matches(".*\\d.*")) {
+                throw new IllegalArgumentException("El destino no debe contener números.");
+            }
+        } catch (Exception destinoInvalido) {
+            System.out.println("✖ " + destinoInvalido.getMessage());
             return;
         }
-        Viaje[] disponibles = persistencia.buscarViajesPorDestino(destino);
-        if (disponibles == null || disponibles.length == 0) {
-            System.out.println("⚠️ No se encontraron viajes programados hacia \"" + destino + "\".\n");
+
+        Viaje[] disponibles = buscarViajesPorDestino(persistencia, destino);
+        if (disponibles.length == 0) {
+            System.out.println("⚠️ No hay viajes hacia \"" + destino + "\".\n");
             return;
         }
-        System.out.println("\n--- Viajes disponibles hacia " + destino + " ---");
+
+        System.out.println("\n━━━ Viajes hacia " + destino + " ━━━");
         for (int i = 0; i < disponibles.length; i++) {
             imprimirResumenViaje(i + 1, disponibles[i]);
         }
         System.out.println();
     }
 
-    // Pide un destino, muestra los viajes disponibles y permite elegir uno para iniciar el flujo completo de venta/reserva de pasaje.
+    // ------------------------------- PROCESO DE VENTA -------------------------------
+    // Busca destino, muestra viajes, elige uno y vende pasaje. Guarda los cambios en XML (asientos y venta)
     public void venderPasajePorDestino(Persistencia persistencia, Scanner entrada) {
         System.out.print("Ingrese el destino: ");
         String destino = entrada.nextLine().trim();
-        Viaje[] disponibles = persistencia.buscarViajesPorDestino(destino);
-
-        if (disponibles == null || disponibles.length == 0) {
-            System.out.println("⚠️ No se encontraron viajes programados hacia \"" + destino + "\".\n");
+        try {
+            Validacion.validarTextoNoVacio(destino, "Destino");
+            if (destino.length() < 2) {
+                throw new IllegalArgumentException("El destino debe tener al menos 2 caracteres.");
+            }
+        } catch (Exception destinoInvalido) {
+            System.out.println("✖ " + destinoInvalido.getMessage());
             return;
         }
-        System.out.println("\n--- Viajes disponibles hacia " + destino + " ---");
+        Viaje[] disponibles = buscarViajesPorDestino(persistencia, destino);
+        if (disponibles.length == 0) {
+            System.out.println("⚠️ No hay viajes hacia \"" + destino + "\".\n");
+            return;
+        }
+        System.out.println("\n━━━ Viajes hacia " + destino + " ━━━");
         for (int i = 0; i < disponibles.length; i++) {
             imprimirResumenViaje(i + 1, disponibles[i]);
         }
-
-        int opcion = leerOpcion(entrada, "Elija el viaje (0 para cancelar): ", 0, disponibles.length);
+        int opcion = leerOpcion(entrada, "Elija viaje (0 para cancelar): ", 0, disponibles.length);
         if (opcion == 0) {
-            System.out.println("Operacion cancelada.\n");
+            System.out.println("Operación cancelada.");
+            return;
+        }
+        Viaje elegido = disponibles[opcion - 1];
+        if (elegido == null || !elegido.tieneAsientosDisponibles()) {
+            System.out.println("✖ El viaje no está disponible o está lleno.");
             return;
         }
 
-        Viaje viajeElegido = disponibles[opcion - 1];
-        Venta venta = this.venderPasaje(viajeElegido, entrada);
-
+        Venta venta = this.venderPasaje(elegido, entrada);
         if (venta != null) {
-            boolean registrada = persistencia.registrarVenta(venta);
-            if (!registrada) {
-                System.out.println("⚠️ La venta se realizo pero no se pudo guardar en el historial (limite alcanzado).");
+            // ✅ Registrar venta en memoria
+            if (!persistencia.registrarVenta(venta)) {
+                System.out.println("⚠️ Venta realizada pero no se guardó en memoria (límite alcanzado).");
+            }
+
+            // ✅ Persistir cambios: asientos ocupados y venta en XML
+            try {
+                persistencia.guardarViajes();   // Guarda el mapa de asientos actualizado
+                persistencia.guardarVentas();   // Guarda el historial de ventas
+                System.out.println("✔ Cambios guardados en el sistema.");
+            } catch (Exception errorGuardadoViajes_Ventas) {
+                System.out.println("⚠️ No se pudieron guardar los cambios en XML: " + errorGuardadoViajes_Ventas.getMessage());
             }
         }
     }
 
-    // Imprime una linea de resumen de un viaje (ruta, fecha, hora, bus, precio y ocupacion actual),
+    // ---------------------------- MÉTODOS AUXILIARES ----------------------------
+    // Busca viajes cuyo destino coincida (ignoreCase). Recorre la matriz de viajes y devuelve un arreglo compacto
+    private Viaje[] buscarViajesPorDestino(Persistencia persistencia, String destino) {
+        Viaje[][] matriz = persistencia.getViajes();
+        int max = Persistencia.getMaxDestinos() * Persistencia.getMaxHorarios();
+        Viaje[] resultado = new Viaje[max];
+        int cont = 0;
+        for (int f = 0; f < Persistencia.getMaxDestinos(); f++) {
+            for (int c = 0; c < Persistencia.getMaxHorarios(); c++) {
+                Viaje v = matriz[f][c];
+                if (v != null && v.getRuta() != null
+                        && v.getRuta().getDestino().equalsIgnoreCase(destino)) {
+                    resultado[cont++] = v;
+                }
+            }
+        }
+        Viaje[] viajes = new Viaje[cont];
+        System.arraycopy(resultado, 0, viajes, 0, cont);
+        return viajes;
+    }
+
+    /*
+    Imprime un resumen del viaje con formato: 
+    N. Origen -> Destino | Fecha Hora | Bus PLACA | S/ Precio | Ocupación: X/Y
+     */
     private void imprimirResumenViaje(int numero, Viaje viaje) {
+        if (viaje == null) {
+            System.out.println(numero + ". [Viaje no válido]");
+            return;
+        }
         String origen = (viaje.getRuta() != null) ? viaje.getRuta().getOrigen() : "N/D";
-        String destinoRuta = (viaje.getRuta() != null) ? viaje.getRuta().getDestino() : "N/D";
+        String destino = (viaje.getRuta() != null) ? viaje.getRuta().getDestino() : "N/D";
         double precio = (viaje.getRuta() != null) ? viaje.getRuta().getPrecioBase() : 0.0;
         String placa = (viaje.getBus() != null) ? viaje.getBus().getPlaca() : "N/D";
         int ocupados = (viaje.getBus() != null) ? viaje.getBus().contarAsientosOcupados() : 0;
         int capacidad = (viaje.getBus() != null) ? viaje.getBus().getCapacidad() : 0;
-
-        System.out.printf("%d. %s -> %s | %s %s | Bus %s | S/ %.2f | Ocupacion: %d/%d%n",
-                numero, origen, destinoRuta, viaje.getFecha(), viaje.getHora(), placa, precio, ocupados, capacidad);
+        String fecha = (viaje.getFecha() != null) ? viaje.getFecha() : "N/D";
+        String hora = (viaje.getHora() != null) ? viaje.getHora() : "N/D";
+        System.out.printf("%d. %s -> %s | %s %s | Bus %s | S/ %.2f | Ocupación: %d/%d%n",
+                numero, origen, destino, fecha, hora, placa, precio, ocupados, capacidad);
     }
 
-    //Lee un numero entero desde el Scanner dentro de un rango [min, max], reintentando en caso de error.
-    private static int leerOpcion(Scanner entrada, String mensaje, int min, int max) {
+    // Lee una opción entera dentro de un rango, con reintentos
+    private int leerOpcion(Scanner entrada, String mensaje, int min, int max) {
         while (true) {
             System.out.print(mensaje);
             String input = entrada.nextLine().trim();
             try {
-                return Validacion.validarYParsearEntero(input, "Opción", min, max);
-            } catch (IllegalArgumentException e) {
-                System.out.println("❌ " + e.getMessage());
+                return Validacion.parsearEntero(input, "Opción", min, max);
+            } catch (Exception opcionInvalida) {
+                System.out.println("✖ " + opcionInvalida.getMessage());
             }
         }
     }
-
 }

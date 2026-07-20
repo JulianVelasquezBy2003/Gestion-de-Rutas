@@ -1,87 +1,70 @@
 package transporte;
 
-/* 
-Representa el boleto fisico/impreso asociado a una venta: numero de asiento y precio pagado.
-@author Julian,Angela
+/*
+Representa el boleto físico/impreso asociado a una venta.
+@author Julian
  */
 public class Boleto {
 
-    // Contador simple en memoria para asignar IDs mientras no exista todavia en la persistencia real de boletos
     private static int siguienteId = 1;
 
-    //Atributos
     private int idBoleto;
     private String fechaVenta;
     private int asientoFila;
     private int asientoColumna;
     private double precioFinal;
 
-    //Constructor
-    public Boleto() {
+    public Boleto() { 
     }
-
     public Boleto(int idBoleto, String fechaVenta, int asientoFila, int asientoColumna, double precioFinal) {
-        this.idBoleto = idBoleto;
-        this.fechaVenta = fechaVenta;
-        this.asientoFila = asientoFila;
-        this.asientoColumna = asientoColumna;
-        this.precioFinal = precioFinal;
+        setIdBoleto(idBoleto);
+        setFechaVenta(fechaVenta);
+        setAsientoFila(asientoFila);
+        setAsientoColumna(asientoColumna);
+        setPrecioFinal(precioFinal);
     }
 
-    /* 
-    Genera el proximo identificador disponible para un nuevo boleto. 
-    Provisional, igual que en Venta, hasta conectar con Persistencia.
-     */
     public static int generarSiguienteId() {
         return siguienteId++;
     }
 
-    //Getters & Setters
-    public int getIdBoleto() {
-        return idBoleto;
-    }
+    // Getters y Setters
+    public int getIdBoleto() { return idBoleto; }
     public void setIdBoleto(int idBoleto) {
+        if (idBoleto <= 0) throw new IllegalArgumentException("ID de boleto debe ser positivo.");
         this.idBoleto = idBoleto;
     }
 
-    public String getFechaVenta() {
-        return fechaVenta;
-    }
+    public String getFechaVenta() { return fechaVenta; }
     public void setFechaVenta(String fechaVenta) {
-        this.fechaVenta = fechaVenta;
+        if (fechaVenta == null || fechaVenta.trim().isEmpty()) {
+            throw new IllegalArgumentException("Fecha de venta no puede estar vacía.");
+        }
+        this.fechaVenta = fechaVenta.trim();
     }
 
-    public int getAsientoFila() {
-        return asientoFila;
-    }
+    public int getAsientoFila() { return asientoFila; }
     public void setAsientoFila(int asientoFila) {
+        if (asientoFila < 0) throw new IllegalArgumentException("Fila no puede ser negativa.");
         this.asientoFila = asientoFila;
     }
 
-    public int getAsientoColumna() {
-        return asientoColumna;
-    }
+    public int getAsientoColumna() { return asientoColumna; }
     public void setAsientoColumna(int asientoColumna) {
+        if (asientoColumna < 0) throw new IllegalArgumentException("Columna no puede ser negativa.");
         this.asientoColumna = asientoColumna;
     }
 
-    public double getPrecioFinal() {
-        return precioFinal;
-    }
+    public double getPrecioFinal() { return precioFinal; }
     public void setPrecioFinal(double precioFinal) {
+        if (precioFinal < 0) throw new IllegalArgumentException("Precio no puede ser negativo.");
         this.precioFinal = precioFinal;
     }
 
-    /* 
-    Convierte el indice de fila (0-based) a su letra correspondiente (0 -> A, 1 -> B, ...), 
-    para mostrar el asiento en formato legible.
-     */
     private String filaComoLetra() {
         return String.valueOf((char) ('A' + asientoFila));
     }
 
-    //Metodos
-    // Imprime en consola el comprobante/ticket del boleto
     public void emitirComprobante() {
         System.out.println("━━━━━━━━━ BOLETO ━━━━━━━━━");
         System.out.println(" N° Boleto : " + idBoleto);

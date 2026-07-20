@@ -1,38 +1,58 @@
 package transporte;
 
-// @author Julian
+/*
+Representa un bus con su mapa de asientos
+@author Julian
+ */
 public class Bus {
-
-    // Dimensiones estandar del bus segun la consigna: 4 filas x 10 columnas
+    // Número de filas del mapa de asientos.
     public static final int FILAS = 4;
+    // Número de columnas del mapa de asientos
     public static final int COLUMNAS = 10;
 
+    // Carácter que representa un asiento libre
     private static final char LIBRE = 'O';
+    // Carácter que representa un asiento ocupado
     private static final char OCUPADO = 'X';
 
-    //Atributos
+    // ATRIBUTOS 
+
     private int idBus;
     private String placa;
     private int capacidad;
+    // Matriz de asientos: filas (A-D) x columnas (1-10)
     private char[][] asientos;
 
-    //Constructor
+    // ==================== CONSTRUCTORES ====================
+
+    /**
+     * Constructor por defecto: crea un bus sin ID, placa ni capacidad,
+     * pero con el mapa de asientos vacío (todos libres).
+     */
     public Bus() {
         this.asientos = crearMapaVacio();
     }
 
-    // Crea un bus inicializando su mapa de asientos con FILAS x COLUMNAS posiciones libres.
+    /**
+     * Constructor principal.
+     * 
+     * @param idBus     identificador único del bus
+     * @param placa     placa del bus (no puede ser null)
+     * @param capacidad número total de asientos (debe ser >= 0)
+     */
     public Bus(int idBus, String placa, int capacidad) {
         this.idBus = idBus;
-        this.placa = placa != null ? placa.trim() : "";
-        this.capacidad = Math.max(0, capacidad);
+        setPlaca(placa);
+        setCapacidad(capacidad);
         this.asientos = crearMapaVacio();
     }
 
-    /* 
-    Construye un arreglo 2D de FILAS x COLUMNAS con todas las posiciones marcadas como 
-    libres ('O'). Se usa en el constructor y como respaldo si el mapa cargado desde el XML 
-    llega nulo o con tamano invalido.
+    // ==================== MÉTODOS PRIVADOS ====================
+
+    /**
+     * Crea un mapa de asientos vacío (todos los asientos libres).
+     * 
+     * @return matriz de FILAS x COLUMNAS con todas las celdas en 'O'
      */
     private char[][] crearMapaVacio() {
         char[][] mapa = new char[FILAS][COLUMNAS];
@@ -44,68 +64,64 @@ public class Bus {
         return mapa;
     }
 
-    //Metodos
-    public int getIdBus() {
-        return idBus;
-    }
+    // ==================== GETTERS Y SETTERS ====================
 
-    public void setIdBus(int idBus) {
-        this.idBus = idBus;
-    }
+    public int getIdBus() { return idBus; }
+    public void setIdBus(int idBus) { this.idBus = idBus; }
 
-    public String getPlaca() {
-        return placa;
-    }
-
+    public String getPlaca() { return placa; }
     public void setPlaca(String placa) {
-        this.placa = placa;
+        this.placa = (placa != null) ? placa.trim() : "";
     }
 
-    public int getCapacidad() {
-        return capacidad;
-    }
-
+    public int getCapacidad() { return capacidad; }
     public void setCapacidad(int capacidad) {
         if (capacidad < 0) {
-            throw new IllegalArgumentException("Capacidad no puede ser negativa.");
+            throw new IllegalArgumentException("La capacidad no puede ser negativa.");
         }
         this.capacidad = capacidad;
     }
 
-    /*
-    Reemplaza el mapa de asientos (por ejemplo, al cargarlo desde el XML). 
-    Si el arreglo recibido es nulo, se conserva un mapa vacio
+    /**
+     * Devuelve una copia del mapa de asientos para evitar modificaciones externas.
+     * 
+     * @return copia de la matriz de asientos, o null si no hay mapa
      */
     public char[][] getAsientos() {
-        if (this.asientos == null) {
-            return null;
-        }
-        char[][] copia = new char[this.asientos.length][];
-        for (int i = 0; i < this.asientos.length; i++) {
-            copia[i] = this.asientos[i].clone();
+        if (asientos == null) return null;
+        char[][] copia = new char[asientos.length][];
+        for (int i = 0; i < asientos.length; i++) {
+            copia[i] = asientos[i].clone();
         }
         return copia;
     }
 
+    /**
+     * Asigna un nuevo mapa de asientos (copia el contenido).
+     * Si el parámetro es null, se reemplaza por un mapa vacío.
+     * 
+     * @param asientos nueva matriz de asientos
+     */
     public void setAsientos(char[][] asientos) {
         if (asientos == null) {
             this.asientos = crearMapaVacio();
             return;
         }
-        // copiar para no compartir la referencia
         this.asientos = new char[asientos.length][];
         for (int i = 0; i < asientos.length; i++) {
             this.asientos[i] = (asientos[i] != null) ? asientos[i].clone() : new char[COLUMNAS];
         }
     }
 
-    /* 
-    Muestra en consola la distribucion de asientos del bus. Las filas se identifican con letras (A, B, C...) 
-    y las columnas con numeros (1, 2, 3...), similar a un bus real.  [O] = libre, [X] = ocupado/vendido.
+    // ==================== MÉTODOS DE UTILIDAD ====================
+
+    /**
+     * Muestra en consola el mapa de asientos del bus.
+     * Las filas se identifican con letras (A, B, C...) y las columnas con números.
      */
     public void mostrarAsientos() {
-        if (asientos == null || asientos.length == 0 || asientos[0].length == 0) {
-            System.out.println("⚠️ Este bus no tiene un mapa de asientos cargado.");
+        if (asientos == null || asientos.length == 0) {
+            System.out.println("⚠️ Mapa de asientos no disponible.");
             return;
         }
         System.out.println("\n   --- Mapa de asientos | Bus: " + placa + " ---");
@@ -116,65 +132,86 @@ public class Bus {
         }
         System.out.println();
         for (int fila = 0; fila < asientos.length; fila++) {
-            char letraFila = (char) ('A' + fila);
-            System.out.print(" " + letraFila + "  ");
+            char letra = (char) ('A' + fila);
+            System.out.print(" " + letra + "  ");
             for (int col = 0; col < asientos[fila].length; col++) {
                 System.out.print(" [" + asientos[fila][col] + "]");
             }
             System.out.println();
         }
         System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        System.out.println("Leyenda: [O] Libre   [X] Ocupado/Vendido\n");
+        System.out.println("Leyenda: [O] Libre   [X] Ocupado\n");
     }
 
-    // Verifica si la posicion indicada existe dentro del mapa de asientos.
+    /**
+     * Verifica si una posición (fila, columna) es válida dentro del mapa.
+     * 
+     * @param fila    índice de fila (0-based)
+     * @param columna índice de columna (0-based)
+     * @return true si la posición existe
+     */
     public boolean posicionValida(int fila, int columna) {
-        return asientos != null && fila >= 0 && fila < asientos.length && columna >= 0 && columna < asientos[fila].length;
+        return asientos != null && fila >= 0 && fila < asientos.length
+                && columna >= 0 && columna < asientos[fila].length;
     }
 
-    // Indica si el asiento en la posicion dada esta libre. Se asume que posicionValida(fila, columna) ya fue verificado antes
+    /**
+     * Verifica si un asiento está libre.
+     * 
+     * @param fila    índice de fila
+     * @param columna índice de columna
+     * @return true si el asiento está libre y la posición es válida
+     */
     public boolean asientoLibre(int fila, int columna) {
         return posicionValida(fila, columna) && asientos[fila][columna] == LIBRE;
     }
 
-    /* Marca un asiento como ocupado (vendido/reservado). Valida que la posicion exista y 
-    que el asiento no este ya ocupado antes de modificar la matriz, evitando ArrayIndexOutOfBoundsException 
-    y ventas duplicadas sobre el mismo asiento.
+    /**
+     * Marca un asiento como ocupado.
+     * 
+     * @param fila    índice de fila
+     * @param columna índice de columna
+     * @return true si se ocupó correctamente, false si ya estaba ocupado o la posición es inválida
      */
     public boolean ocuparAsiento(int fila, int columna) {
-        if (!posicionValida(fila, columna)) {
-            return false;
-        }
-        if (asientos[fila][columna] == OCUPADO) {
-            return false;
-        }
+        if (!asientoLibre(fila, columna)) return false;
         asientos[fila][columna] = OCUPADO;
         return true;
     }
 
-    // Libera un asiento previamente ocupado (por ejemplo, si se anula una venta).
+    /**
+     * Libera un asiento (lo marca como libre).
+     * 
+     * @param fila    índice de fila
+     * @param columna índice de columna
+     * @return true si se liberó correctamente, false si la posición es inválida
+     */
     public boolean liberarAsiento(int fila, int columna) {
-        if (!posicionValida(fila, columna)) {
-            System.out.println("❌ Esa posicion no existe en el mapa de asientos.");
-            return false;
-        }
+        if (!posicionValida(fila, columna)) return false;
         asientos[fila][columna] = LIBRE;
         return true;
     }
 
-    // Calcula cuantos asientos estan ocupados actualmente. Util para el reporte de ocupacion del administrador.
+    /**
+     * Cuenta cuántos asientos están ocupados actualmente.
+     * 
+     * @return número de asientos ocupados
+     */
     public int contarAsientosOcupados() {
-        int contador = 0;
-        if (asientos == null) {
-            return 0;
-        }
+        int cont = 0;
+        if (asientos == null) return 0;
         for (char[] fila : asientos) {
-            for (char estado : fila) {
-                if (estado == OCUPADO) {
-                    contador++;
-                }
+            for (char c : fila) {
+                if (c == OCUPADO) cont++;
             }
         }
-        return contador;
+        return cont;
+    }
+
+    // ==================== SOBREESCRITURA ====================
+
+    @Override
+    public String toString() {
+        return "Bus{id=" + idBus + ", placa='" + placa + "', capacidad=" + capacidad + "}";
     }
 }
